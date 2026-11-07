@@ -25,6 +25,7 @@ Each decision: context → options → choice → rationale → fallback. Revisi
 
 ## TD-005 — Signalling transport & server
 - **Choice:** JSON over **WSS**; a small self-written WebSocket relay (Node `ws` or Deno), stateless, ephemeral rooms, token-gated.
+- **Host choice:** user has no preference → **Deno Deploy** free tier (WebSocket, no credit card). Portable to a home machine or Cloudflare if preferred.
 - **Why:** minimal, portable, free to host anywhere, carries no media, easy to audit.
 - **Fallback:** if WS hosting proves awkward, a long-poll HTTP fallback — avoided unless needed.
 
@@ -42,7 +43,7 @@ Each decision: context → options → choice → rationale → fallback. Revisi
 - **Why:** free, offline, no network/privacy cost.
 
 ## TD-009 — Build & compatibility
-- **Choice:** Gradle (Kotlin DSL) + version catalog. targetSdk = recent (35); **minSdk pinned to the spare phone** once known (OQ-3); provisional minSdk 26 (Android 8) pending that info.
+- **Choice:** Gradle (Kotlin DSL) + version catalog. targetSdk = recent (35); **minSdk pinned to the spare phone** once known (OQ-3); **minSdk 29 (Android 10)** — camera phone is a Realme 6 (ships Android 10, max 11).
 - **Why:** modern build; widest practical reach (Q1=D) anchored to the actual device.
 
 ## TD-010 — Testing approach

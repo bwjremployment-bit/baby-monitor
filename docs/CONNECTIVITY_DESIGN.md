@@ -55,6 +55,20 @@ Zero-cost paths, in preference order:
 
 **Key open question for you (OQ-1):** Does your home internet give you a public IP and can your router forward ports? And which mobile carrier is the viewer phone on? This decides whether self-hosted TURN at home is viable, or whether we rely on direct P2P + a free TURN fallback. Stage 1 cannot resolve this without that info.
 
+## 5a. UPDATE (2026-11-07): home internet is LTE — this is the crux
+
+The home modem is a **Sagemcom 5366 LTE** → home internet is **cellular LTE**, behind **CGNAT** (no public IPv4, no port-forwarding). The viewer is also on mobile data. So **both peers are typically behind carrier-grade symmetric NAT** — the hardest case for P2P.
+
+Implications, in order of preference for a zero-cost working connection:
+
+1. **IPv6 direct (best free path).** Many LTE carriers assign a **public IPv6** address per device with no NAT. If *both* the home LTE and the viewer's carrier provide IPv6, WebRTC ICE can connect directly over IPv6 host candidates — **no TURN, no cost, low latency.** We will prioritise gathering and trying IPv6 candidates. **Depends on OQ-4** (carrier IPv6 support).
+2. **IPv4 STUN direct.** May still work if one side has a cone NAT; unreliable when both are symmetric CGNAT. We try it, but don't count on it.
+3. **Publicly-hosted TURN relay (fallback when 1 & 2 fail).** coturn **cannot** be self-hosted at home now (CGNAT makes home unreachable). A publicly-reachable TURN host is required. Zero-cost options are constrained:
+   - Free TURN tiers (e.g. metered.ca Open Relay): work, but cap monthly GB — **too small for continuous overnight streaming every night** (continuous A/V ≈ 0.5–1.5 GB/hour). Fine for intermittent checks, not 24/7.
+   - A genuinely-free always-on VM with a public IP + large egress (e.g. Oracle Cloud "Always Free") could host coturn at no ongoing cost, **but signup requires a card for identity verification**, which conflicts with the strict no-card rule. **User decision needed** if IPv6 is unavailable.
+
+**Honest conclusion:** if carrier IPv6 is available on both ends (OQ-4), we get a free, direct, low-latency connection and TURN is unnecessary. If it is not, continuous zero-cost 24/7 remote viewing runs into a real infrastructure limit; we then either (a) accept a free TURN tier with a usage cap (intermittent viewing), or (b) the user opts into a free-but-card-verified VM for self-hosted TURN. We will not pretend this limit away.
+
 ## 6. NAT traversal flow
 
 ICE gathers host + server-reflexive (STUN) + relay (TURN) candidates on both ends, exchanged via signalling, and picks the best working pair. Trickle ICE for speed. If all direct pairs fail and no TURN is available, the connection cannot form — this is the scenario TURN exists to cover, hence OQ-1 matters.

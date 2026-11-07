@@ -4,7 +4,7 @@ Likelihood/Impact: L/M/H. Status: Open / Mitigated / Accepted / Needs-user-input
 
 | ID | Risk | L | I | Mitigation | Status |
 |----|------|---|---|-----------|--------|
-| R1 | **Mobile-carrier CGNAT/symmetric NAT blocks direct P2P**, needing TURN, which has no free *public* guarantee | H | H | Self-host coturn at home (free) if public IP + port-forward available; free TURN tier as best-effort fallback; direct P2P works in many cases | **Needs-user-input (OQ-1)** |
+| R1 | **Both ends behind cellular CGNAT** (home is LTE / Sagemcom 5366, viewer on mobile data) → direct IPv4 P2P usually fails; **home TURN not self-hostable** (CGNAT) | H | H | **Prefer IPv6 direct** (free, if both carriers give IPv6 — OQ-4); else publicly-hosted TURN. Free TURN tiers cap GB (ok for intermittent, not 24/7); free card-verified VM (Oracle Always Free) only with user opt-in. Honest limit documented, not hidden | **Escalated — see OQ-4; partially needs-user-input** |
 | R2 | No Android SDK in this cloud env; no physical device reachable here | H | M | Install free Google cmdline SDK tools in Stage 2 for builds/unit tests; on-device tests done by user on real phones with guided steps | Mitigated (plan) |
 | R3 | WebRTC prebuilt library drift/unavailability | M | M | Use maintained `io.github.webrtc-sdk:android`; documented fallback to GetStream build (TD-002) | Mitigated |
 | R4 | Android 14+ restricts starting camera/mic foreground services from background/boot → auto-start (Q3) + viewer-remote-start (C8) may not work on all versions | M | M | Manual start is primary + always works; auto/remote-start declared best-effort per OS version; keep-alive "armed" presence; document per-device | Open |
@@ -19,6 +19,7 @@ Likelihood/Impact: L/M/H. Status: Open / Mitigated / Accepted / Needs-user-input
 
 ## Open questions requiring user input (carried to NEXT_SESSION_INSTRUCTIONS.md)
 
-- **OQ-1 (TURN/NAT):** Home internet public IP + can you port-forward the router? Which mobile carrier is the viewer phone on?
-- **OQ-2 (signalling host):** Where to host the tiny signalling relay — home machine/Pi, Deno Deploy (free, no card), Cloudflare (free, no card), or other? (I will not create accounts for you.)
-- **OQ-3 (device):** Spare (camera) phone make/model + Android version; primary (viewer) phone Android version.
+- **OQ-1 (resolved):** Home internet is LTE/CGNAT (Sagemcom 5366 LTE) → no public IPv4, no home-TURN. Superseded by OQ-4.
+- **OQ-4 (new, important):** Do the home LTE carrier and the viewer's mobile carrier provide **public IPv6**? (If yes → free direct connection, no TURN needed.) Name the carrier(s).
+- **OQ-2 (resolved):** Signalling relay → Deno Deploy free tier (no card). User creates the login; I create no accounts.
+- **OQ-3 (resolved):** Camera phone = Realme 6 (Android 10/11) → minSdk 29. Viewer phone Android version still to confirm (minor).

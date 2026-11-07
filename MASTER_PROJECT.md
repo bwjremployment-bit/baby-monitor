@@ -34,7 +34,7 @@ The original brief asked for the transmitter to be **disguised as an ordinary ca
 
 | Q | Topic | Answer |
 |---|-------|--------|
-| Q1 | Android compatibility | **D** — widest practical; pin to spare-phone version. *(Phone model/version still needed — see NEXT_SESSION_INSTRUCTIONS.md)* |
+| Q1 | Android compatibility | **D** — widest practical. Camera phone = **Realme 6** → minSdk **29 (Android 10)**. Viewer version TBC (minor). |
 | Q2 | Pairing | **C** — QR **and** manual code |
 | Q3 | When transmission starts | **C** — manual start in-app, optional auto-start where Android allows; **plus** viewer may remotely turn transmission on when the camera phone is connected/standing by |
 | Q4 | Connection drop | **C** — auto-reconnect + status + manual reconnect button |
