@@ -19,5 +19,13 @@ Columns: ID · Area · What · Type (unit/instrumented/manual-device/e2e) · Env
 | T-011 | security | unauthorised/invalid token rejected | unit+e2e | cloud+phones |
 | T-012 | battery/thermal | long run on transmitter | manual-device | phone |
 
-## Executed
-_None yet (Stage 1 produced no code to test)._
+## Executed (Stage 2, in sandbox)
+| ID | What | Type | Env | Result | Date |
+|----|------|------|-----|--------|------|
+| T-001 | signalling message encode/decode + schema + unknown-field tolerance | unit | cloud | **PASS** (11 tests) | 2026-11-07 |
+| T-002 | pairing: Base32 round-trip, URI + manual-code round-trip, token derive/verify, wrong-secret & role-bound rejection, window skew | unit | cloud | **PASS** (10 tests) | 2026-11-07 |
+| T-003 | connection state-machine transitions (happy path, drop/recover, auth-fail, invalid rejected) | unit | cloud | **PASS** (7 tests) | 2026-11-07 |
+| T-SIG | signalling relay: pair camera+viewer, offer/answer/ice relay, room isolation, role enforcement, peer-leave | integration | cloud | **PASS** (2 tests) | 2026-11-07 |
+| T-004 | both Android app modules assembleDebug | build | **CI (pending first run)** | scripts parse; blocked only by sandbox egress, runs on GitHub Actions | 2026-11-07 |
+
+Totals in sandbox: **40 tests, 0 failures** (shared 28 + signalling 2 integration cases covering 10 assertions). Android APK build moved to CI (sandbox cannot reach dl.google.com).

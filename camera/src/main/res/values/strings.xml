@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Jiàndié Camera</string>
+    <string name="status_idle">Not transmitting</string>
+    <string name="open_radius">Radius (transmission settings)</string>
+    <string name="radius_title">Radius</string>
+    <string name="radius_pairing_label">Pairing code (share with Yps Viewer):</string>
+    <string name="start_transmission">Start transmission</string>
+    <string name="stop_transmission">Stop transmission</string>
+    <string name="notif_channel">Transmission</string>
+    <string name="notif_title">Jiàndié Camera is transmitting</string>
+    <string name="notif_text">Live video and audio are being sent to your paired viewer.</string>
+</resources>

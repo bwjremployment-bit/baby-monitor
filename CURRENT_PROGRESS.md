@@ -1,7 +1,18 @@
 # CURRENT_PROGRESS.md
 
-**Stage:** 1 (complete). **Next:** Stage 2, after user go-ahead + OQ answers.
+**Stage:** 2 (foundation) — core + signalling built & tested in sandbox; Android build wired for CI. **Next:** first CI run to produce APKs, then Stage 3.
 **Updated:** 2026-11-07.
+
+## Done in Stage 2
+- **Hard finding:** sandbox egress blocks `dl.google.com` → Android SDK + Google Maven (AGP/AndroidX) unreachable here. APK compilation moved to **free GitHub Actions CI** (`.github/workflows/android.yml`). Proven: Gradle scripts parse; only AGP resolution is blocked.
+- **`shared/`** standalone Kotlin lib (buildable/testable here): signalling message protocol (kotlinx.serialization), pairing (Base32, QR-URI + manual code, HMAC time-windowed tokens), connection state machine. **28 unit tests PASS.**
+- **`signaling-server/`** Node `ws` zero-knowledge relay (never sees secret/media): rooms, role enforcement, offer/answer/ice relay, isolation, peer-leave. **2 integration tests PASS.**
+- **`camera/`** + **`viewer/`** Android app modules: manifests (permissions, foreground camera+mic service, boot receiver), minimal honest UI stubs, TransmissionService (FGS + silent ongoing notification), dependency wiring (WebRTC `io.github.webrtc-sdk`, zxing, security-crypto, shared). Compile on CI.
+- Root Gradle project (settings, version catalog, wrapper 8.11.1, `includeBuild(shared)`), README, CI workflow (tests + both APK artifacts).
+- All committed.
+
+Totals this stage: **40 tests, 0 failures** in sandbox. Android APK = first CI run pending (needs the repo on GitHub).
+
 
 ## Done in Stage 1
 - Inspected cloud build env: Java 21, Gradle, Node 22, Python 3.13, git present. **No Android SDK** (install in Stage 2). No physical device in this env.
@@ -14,9 +25,6 @@
 
 ## Key decisions locked
 - Kotlin + WebRTC (`io.github.webrtc-sdk:android`, fallback GetStream); foreground service (camera+mic); self-written WSS signalling relay; STUN public/self; TURN self-hosted coturn if NAT needs it; EncryptedSharedPreferences+Keystore; QR via ML Kit/ZXing. (See TECHNICAL_DECISIONS.md.)
-
-## No code yet
-Stage 1 is design-only. Nothing to build/test on device yet. Any claim of working features before Stage 3+ would be unverified — do not assume.
 
 ## User answers received (2026-11-07)
 - **OQ-3 → camera phone = Realme 6** (RMX2001; shipped Android 10, max Android 11). minSdk set to **29 (Android 10)** — widest practical, covers the device. Viewer phone version still unconfirmed (not blocking; viewer just needs to run the viewer app).

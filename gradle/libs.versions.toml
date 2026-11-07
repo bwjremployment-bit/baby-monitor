@@ -1,0 +1,29 @@
+[versions]
+agp = "8.7.3"
+kotlin = "2.0.21"
+coreKtx = "1.13.1"
+appcompat = "1.7.0"
+material = "1.12.0"
+lifecycle = "2.8.7"
+# WebRTC prebuilt (TD-002): io.github.webrtc-sdk:android, free, Maven Central.
+webrtc = "125.6422.07"
+# QR (TD-008)
+zxing = "3.5.3"
+# Secure storage (TD-007)
+securityCrypto = "1.1.0-alpha06"
+
+[libraries]
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+androidx-lifecycle-service = { group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "lifecycle" }
+webrtc = { group = "io.github.webrtc-sdk", name = "android", version.ref = "webrtc" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
+# The shared pure-Kotlin library (consumed via includeBuild substitution).
+shared = { group = "com.family.monitor", name = "shared", version = "0.1.0" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

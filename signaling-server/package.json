@@ -1,0 +1,16 @@
+{
+  "name": "babymonitor-signaling",
+  "version": "0.1.0",
+  "description": "Zero-knowledge WebSocket signalling relay for the Jiandie Camera / Yps Viewer baby monitor. Relays SDP + ICE between two paired peers in a room. Never sees the pairing secret or media.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "license": "MIT"
+}

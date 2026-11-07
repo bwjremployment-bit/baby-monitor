@@ -5,7 +5,7 @@ One (or more) Claude Code session per stage. Do not start a stage without the us
 ## Stage 1 — Requirements, research, architecture ✅ DONE (2026-11-07)
 Environment inspected; scope corrected to an honest monitor; all design deliverables written (architecture, requirements, connectivity, security, risk register, decisions, roadmap) + tracking docs. **Exit:** awaiting user go-ahead + OQ-1/2/3.
 
-## Stage 2 — Project foundation & shared system
+## Stage 2 — Project foundation & shared system ✅ DONE (2026-11-07, APK build pending first CI run)
 - Install free Android cmdline SDK tools in this env; accept licenses; wire Gradle + version catalog.
 - Create Gradle root + modules: `core` (lib), `camera` (app), `viewer` (app), `signaling-server` (Node/Deno).
 - App IDs, Kotlin, WebRTC + AndroidX deps, manifests/permissions scaffolding.

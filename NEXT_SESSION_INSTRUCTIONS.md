@@ -2,23 +2,29 @@
 
 ## At the start of the next session
 1. Read `CURRENT_PROGRESS.md` then this file.
-2. Verify against the actual repo (don't trust docs alone): `ls -R`, `git log --oneline`, confirm which files/modules exist before continuing.
-3. Do **not** redo Stage 1. Do **not** start Stage 2 until the user says go **and** the three OQs below are answered (at least OQ-3; OQ-1/2 can be refined during Stage 2 but are needed by Stage 5).
+2. Verify against the repo: `git log --oneline`, `cd shared && ./gradlew test` (should pass 28), `cd signaling-server && npm test` (should pass). Confirm module files exist before continuing.
+3. Do not redo Stages 1–2.
 
-## Required inputs from the user (ask if not already given)
-- **OQ-3 (needed to pin minSdk, do first):** spare/camera phone make + model + Android version (Settings → About phone → Android version); viewer phone Android version.
-- **OQ-2 (needed by Stage 5, decide early):** where to host the tiny signalling relay — home machine/Raspberry Pi, Deno Deploy (free, no card), Cloudflare Workers (free, no card), or other. Do not create accounts for the user.
-- **OQ-1 (needed by Stage 5):** does home internet have a public IP and can the router forward ports (for self-hosted coturn TURN)? which mobile carrier is the viewer phone on (CGNAT likelihood)?
+## Environment reality (important)
+- The sandbox **cannot compile Android** (egress blocks `dl.google.com` → no Android SDK, no AGP/AndroidX). `shared` + `signaling-server` build/test here; **APKs build on GitHub Actions** (`.github/workflows/android.yml`) or Android Studio.
+- To get the first real APKs + green Android build, the repo needs to be on **GitHub** so Actions can run. Ask the user for a repo (or to create an empty private/public one) and push; do NOT create accounts/repos on their behalf without the go-ahead. CI is free for public repos; private repos get free minutes.
 
-## Exact first tasks of Stage 2 (once cleared)
-1. Install Android cmdline SDK tools (free): download `commandline-tools`, set `ANDROID_HOME`, `sdkmanager --licenses`, install `platform-tools`, `platforms;android-35`, `build-tools;35.0.0`. Record exact steps + versions in TECHNICAL_DECISIONS.md.
-2. Create Gradle root (`settings.gradle.kts`, `gradle/libs.versions.toml`, wrapper) + modules `core`, `camera`, `viewer`, and non-Android `signaling-server`.
-3. Set applicationIds (e.g. `com.family.jiandie.camera`, `com.family.yps.viewer`), minSdk = device version (OQ-3), targetSdk 35, Kotlin, Compose, WebRTC + AndroidX deps via catalog.
-4. Scaffold `core`: signalling message types + WS client interface, pairing/crypto stubs, connection state machine, WebRTC factory helper.
-5. `assembleDebug` both apps successfully; commit.
-6. Update CURRENT_PROGRESS / TEST_REGISTER (T-004) with real build output.
+## Open items carried forward
+- **OQ-4 (connectivity, important):** home LTE carrier + viewer carrier, and whether they provide **public IPv6** (decides whether a free direct connection is possible vs needing hosted TURN). Needed by Stage 5; good to resolve during Stage 3/4.
+- Viewer phone Android version (minor).
+
+## Stage 3 objectives (Jiàndié Camera — the transmitter)
+Build the real camera app on top of the Stage 2 skeleton:
+1. Camera preview (WebRTC `Camera2Capturer` → local `VideoTrack` → `SurfaceViewRenderer`) with an always-visible LIVE indicator (honest monitor).
+2. Camera switch; flash/torch where supported; basic camera settings.
+3. Real **Radius** screen: enable/disable transmission, pairing (generate + show QR via zxing + manual code), receiver auth, A/V config, connection info, diagnostics/errors.
+4. Flesh out `TransmissionService`: own the capturer + PeerConnection; keep capturing in background / screen-off / locked.
+5. Microphone capture → audio track (silent locally).
+6. Network monitoring (`ConnectivityManager`), transmission lifecycle via the shared state machine, reconnection with backoff.
+7. Wire the `shared` signalling WS client (implement the Android WS transport) + WebRTC `PeerConnectionFactory` helper.
+8. Optional auto-start/remote-start (best-effort per Android 14+ — document).
+9. Iterate builds via CI; add instrumented/unit tests where device-independent. Update TEST_REGISTER + BUG_REGISTER with real results. On-device background validation by the user.
 
 ## Reminders
-- Zero cost; no account creation on the user's behalf; no covert features.
-- Label simulated vs on-device results honestly. Never claim success without evidence.
-- Keep tracking docs updated as work lands.
+- Zero cost; no account creation on the user's behalf; honest monitor (no covert features; never suppress OS indicators/FGS notification).
+- Label simulated vs on-device results honestly. Never claim success without evidence (e.g., don't call background operation done until validated on the Realme 6).
