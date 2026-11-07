@@ -1,0 +1,11 @@
+# Android / Gradle (for later stages)
+.gradle/
+build/
+local.properties
+*.apk
+*.keystore
+*.jks
+# Node (signaling-server)
+node_modules/
+# OS
+.DS_Store
