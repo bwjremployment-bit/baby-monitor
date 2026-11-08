@@ -40,6 +40,9 @@ The original brief asked for the transmitter to be **disguised as an ordinary ca
 | Q4 | Connection drop | **C** — auto-reconnect + status + manual reconnect button |
 | Q5 | Video quality | **C** — balanced quality / latency / battery |
 
+## 4b. Usage profile (2026-11-08)
+On-demand viewing: wake camera → watch ≤~4 h, ~3×/week (≤~48 h/month). Camera sits *armed* (signalling only) between sessions. This makes a free TURN fallback sufficient even if IPv6-direct is unavailable; no 24/7 streaming. No path change — staying on the WebRTC + remote-wake design.
+
 ## 5. Document map
 
 Tracking (root):

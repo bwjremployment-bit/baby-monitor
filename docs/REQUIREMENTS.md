@@ -45,6 +45,19 @@ Verification: how each will be shown true in Stage 6.
 | V8 | Clear handling of invalid credentials / connection errors | MUST | Negative test |
 | V9 | No ads, subscriptions, social, recording library, AI, accounts beyond pairing | MUST | Code review |
 
+## C2. Usage profile (confirmed 2026-11-08)
+
+**On-demand, not continuous.** The viewer wakes the camera, watches up to ~4 h,
+about 3×/week → **≤ ~48 h/month maximum** (typically less). The camera otherwise
+sits *armed* (signalling connection only; camera/mic off; no media flowing).
+
+Implications:
+- Idle "armed" state costs negligible battery/data; media flows only during a session.
+- Worst-case relayed data (both ends CGNAT, no IPv6): ~6.5 GB/month @300 kbps to
+  ~13 GB/month @600 kbps → fits a free TURN tier (~20 GB/mo). IPv6 direct = 0 relay data.
+- Remote-wake of the camera is reliable on the Realme 6 (Android 11); on Android 14+
+  transmitters it would be constrained (R4).
+
 ## D. Non-functional
 
 | ID | Requirement | Level | Target |
