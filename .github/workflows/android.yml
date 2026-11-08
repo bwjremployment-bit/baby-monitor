@@ -53,6 +53,10 @@ jobs:
           java-version: '21'
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Default install list includes the removed 'tools' package and fails;
+          # install exactly what we need in the next step instead.
+          packages: ''
       - name: Install required SDK packages
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
       - name: Assemble debug APKs
