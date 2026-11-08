@@ -1,7 +1,8 @@
 package com.family.jiandie.camera
 
-import android.app.NotificationChannel
+import android.app.Notification
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -9,61 +10,137 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.lifecycle.LifecycleService
+import androidx.lifecycle.lifecycleScope
+import com.family.jiandie.camera.data.SecurePrefs
+import com.family.jiandie.camera.service.TransmissionController
+import com.family.jiandie.camera.service.TransmissionController.Mode
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 /**
- * Foreground service that will own camera + microphone capture and the WebRTC
- * PeerConnection, so transmission survives the app being backgrounded, the
- * screen off, and the phone locked.
+ * Foreground service that keeps standby (and, when asked, live streaming) alive
+ * with the screen off. Its ongoing notification is mandatory and honest: it says
+ * whether the camera and microphone are off (standby) or LIVE. It is never hidden.
  *
- * STAGE 2: establishes the correct foreground-service lifecycle + the mandatory
- * ongoing notification (camera|microphone type). Capture + WebRTC wiring is
- * Stage 3. The notification is SILENT (no sound in the room) but always visible
- * — Android's privacy indicators + this notification are never suppressed.
+ * It must be started while the app is visible (see NotificationHelper.postRearmPrompt
+ * for why), which is why arming lives in the Radius screen.
  */
 class TransmissionService : LifecycleService() {
 
+    private var statusJob: Job? = null
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
-        ensureChannel()
+        val controller = TransmissionController.get(this)
+        NotificationHelper.ensureChannels(this)
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.notif_title))
-            .setContentText(getString(R.string.notif_text))
-            .setSmallIcon(android.R.drawable.presence_video_online)
-            .setOngoing(true)
-            .setSilent(true)
-            .build()
-
-        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA or
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-        } else {
-            0
+        when (intent?.action) {
+            ACTION_STOP -> {
+                controller.disarm(userInitiated = true)
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                return START_NOT_STICKY
+            }
+            ACTION_START -> return handleStart(controller)
+            else -> {
+                // Null intent = Android restarted us after killing the process. We are now a
+                // background start, which cannot open the camera/microphone, so ask the user
+                // to re-arm instead of pretending to be on standby.
+                if (SecurePrefs.get(this).armedDesired) NotificationHelper.postRearmPrompt(this)
+                stopSelf()
+                return START_NOT_STICKY
+            }
         }
-        ServiceCompat.startForeground(this, NOTIF_ID, notification, type)
+    }
 
-        // TODO Stage 3: start camera + mic capture, create PeerConnection,
-        //  connect to signalling, begin transmitting.
+    private fun handleStart(controller: TransmissionController): Int {
+        // Android requires startForeground() promptly after startForegroundService(), even if we
+        // are about to give up, so promote first and validate second.
+        try {
+            promoteToForeground(buildNotification(controller.status.value))
+        } catch (e: Exception) {
+            // Typically a missing camera/microphone permission, or Android refusing a background start.
+            controller.reportError("Android would not start standby: ${e.message}. Open the app and try again.")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        controller.armError()?.let {
+            controller.reportError(it)
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        NotificationHelper.clearRearmPrompt(this)
+        controller.arm()
+
+        statusJob?.cancel()
+        statusJob = lifecycleScope.launch {
+            controller.status.collect { s ->
+                if (s.mode == Mode.OFF) return@collect
+                getSystemService(NotificationManager::class.java)
+                    .notify(NotificationHelper.ID_STATUS, buildNotification(s))
+            }
+        }
         return START_STICKY
     }
 
-    private fun ensureChannel() {
-        val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            getString(R.string.notif_channel),
-            NotificationManager.IMPORTANCE_LOW, // low = no sound
-        ).apply { setSound(null, null) }
-        mgr.createNotificationChannel(channel)
+    private fun promoteToForeground(n: Notification) {
+        if (Build.VERSION.SDK_INT >= 30) {
+            var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            if (SecurePrefs.get(this).sendAudio) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            ServiceCompat.startForeground(this, NotificationHelper.ID_STATUS, n, types)
+        } else {
+            startForeground(NotificationHelper.ID_STATUS, n)   // Android 10: no camera/mic service types yet
+        }
+    }
+
+    private fun buildNotification(s: TransmissionController.Status): Notification {
+        val audio = SecurePrefs.get(this).sendAudio
+        val (title, text) = when {
+            s.mode == Mode.LIVE ->
+                getString(R.string.notif_live_title) to
+                    getString(if (audio) R.string.notif_live_text_av else R.string.notif_live_text_v)
+            s.mode == Mode.STARTING ->
+                getString(R.string.notif_starting_title) to getString(R.string.notif_starting_text)
+            s.signalingConnected ->
+                getString(R.string.notif_standby_title) to getString(R.string.notif_standby_text)
+            else ->
+                getString(R.string.notif_standby_title) to getString(R.string.notif_standby_offline_text)
+        }
+        val stop = PendingIntent.getService(
+            this, 0, Intent(this, TransmissionService::class.java).setAction(ACTION_STOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        return NotificationCompat.Builder(this, NotificationHelper.CHANNEL_STATUS)
+            .setSmallIcon(android.R.drawable.presence_video_online)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setOngoing(true)
+            .setSilent(true)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setContentIntent(NotificationHelper.openAppIntent(this))
+            .addAction(0, getString(R.string.notif_turn_off), stop)
+            .build()
+    }
+
+    override fun onDestroy() {
+        statusJob?.cancel()
+        // Not user-initiated: keep the "re-arm me" hint so a restart can prompt the user.
+        TransmissionController.get(this).disarm(userInitiated = false)
+        super.onDestroy()
     }
 
     companion object {
-        private const val CHANNEL_ID = "transmission"
-        private const val NOTIF_ID = 1001
+        const val ACTION_START = "com.family.jiandie.camera.START"
+        const val ACTION_STOP = "com.family.jiandie.camera.STOP"
 
         fun start(context: Context) {
-            val intent = Intent(context, TransmissionService::class.java)
-            context.startForegroundService(intent)
+            context.startForegroundService(Intent(context, TransmissionService::class.java).setAction(ACTION_START))
+        }
+
+        fun stop(context: Context) {
+            context.startService(Intent(context, TransmissionService::class.java).setAction(ACTION_STOP))
         }
     }
 }

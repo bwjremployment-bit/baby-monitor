@@ -5,7 +5,6 @@ import android.os.Looper
 import com.family.monitor.shared.signaling.Role
 import com.family.monitor.shared.signaling.SignalCodec
 import com.family.monitor.shared.signaling.SignalMessage
-import kotlinx.serialization.SerializationException
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -102,10 +101,8 @@ class SignalingClient(
     private fun handle(text: String) {
         val msg = try {
             SignalCodec.decode(text)
-        } catch (e: SerializationException) {
-            return
         } catch (e: IllegalArgumentException) {
-            return
+            return   // malformed or unknown message (SerializationException is an IllegalArgumentException)
         }
         when (msg) {
             is SignalMessage.Joined -> {

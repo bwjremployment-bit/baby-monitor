@@ -1,13 +1,81 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Jiàndié Camera</string>
-    <string name="status_idle">Not transmitting</string>
-    <string name="open_radius">Radius (transmission settings)</string>
+
+    <!-- Main camera screen -->
+    <string name="status_off">Not transmitting</string>
+    <string name="status_standby">Standby · camera and microphone off</string>
+    <string name="status_starting">Starting…</string>
+    <string name="status_live">● LIVE · being viewed</string>
+    <string name="cd_flip">Switch camera</string>
+    <string name="cd_flash">Flash</string>
+    <string name="cd_radius">Radius settings</string>
+    <string name="perm_camera_needed">Camera permission is needed to show the preview.</string>
+    <string name="flash_unsupported">This camera has no flash.</string>
+
+    <!-- Radius -->
     <string name="radius_title">Radius</string>
-    <string name="radius_pairing_label">Pairing code (share with Yps Viewer):</string>
-    <string name="start_transmission">Start transmission</string>
-    <string name="stop_transmission">Stop transmission</string>
-    <string name="notif_channel">Transmission</string>
-    <string name="notif_title">Jiàndié Camera is transmitting</string>
-    <string name="notif_text">Live video and audio are being sent to your paired viewer.</string>
+    <string name="radius_subtitle">Everything about transmitting lives here.</string>
+    <string name="arm">Turn on standby</string>
+    <string name="disarm">Turn off standby</string>
+    <string name="stop_streaming">Stop streaming now</string>
+    <string name="arm_hint">Standby keeps a connection to the server so your viewer can wake the camera. The camera and microphone stay off until then. Turn it on while this app is open.</string>
+
+    <string name="sec_pair">Pair with Yps Viewer</string>
+    <string name="pair_hint">In Yps Viewer choose “Scan code”, or type the code below.</string>
+    <string name="copy_code">Copy code</string>
+    <string name="share_code">Share</string>
+    <string name="repair">Re-pair (disconnect all viewers)</string>
+    <string name="repair_title">Re-pair?</string>
+    <string name="repair_msg">This creates a new pairing code. Every viewer that was paired will stop working until it scans the new code. Standby will be turned off.</string>
+    <string name="repair_confirm">Re-pair</string>
+    <string name="cancel">Cancel</string>
+    <string name="code_copied">Pairing code copied</string>
+
+    <string name="sec_server">Server</string>
+    <string name="server_hint">The address of your signalling server. It must start with wss://</string>
+    <string name="server_placeholder">wss://your-server.example.com</string>
+    <string name="save">Save</string>
+    <string name="saved">Saved</string>
+    <string name="server_invalid">That address must start with wss://</string>
+
+    <string name="sec_av">Video and audio</string>
+    <string name="quality">Quality</string>
+    <string name="send_audio">Send sound from this room</string>
+    <string name="keep_awake">Keep the connection awake (best when charging)</string>
+    <string name="applies_next_arm">Applies the next time you turn on standby.</string>
+
+    <string name="sec_relay">Relay server (optional)</string>
+    <string name="relay_hint">Only needed if direct connections fail. Paste the TURN address, user and password from your relay provider.</string>
+    <string name="relay_url">turn:host:3478?transport=udp</string>
+    <string name="relay_user">User</string>
+    <string name="relay_pass">Password</string>
+
+    <string name="sec_keep">Keep it running</string>
+    <string name="keep_hint">Some phones stop background apps to save battery. Allow this app to run in the background, and on Realme/ColorOS also allow auto-launch and lock the app in the recent-apps list.</string>
+    <string name="battery_exempt">Allow background battery use</string>
+    <string name="app_settings">Open app settings</string>
+
+    <string name="sec_diag">Diagnostics</string>
+    <string name="copy_log">Copy log</string>
+    <string name="log_copied">Log copied</string>
+
+    <!-- Status labels -->
+    <string name="yes">yes</string>
+    <string name="no">no</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel_status">Camera status</string>
+    <string name="notif_channel_prompt">Resume standby</string>
+    <string name="notif_standby_title">Jiàndié Camera — standby</string>
+    <string name="notif_standby_text">Waiting for Yps Viewer. The camera and microphone are off.</string>
+    <string name="notif_standby_offline_text">Can’t reach the server — retrying. The camera and microphone are off.</string>
+    <string name="notif_starting_title">Jiàndié Camera — starting</string>
+    <string name="notif_starting_text">Your viewer asked to watch. Connecting…</string>
+    <string name="notif_live_title">Jiàndié Camera — LIVE</string>
+    <string name="notif_live_text_av">Sending live video and sound to your paired viewer.</string>
+    <string name="notif_live_text_v">Sending live video (no sound) to your paired viewer.</string>
+    <string name="notif_turn_off">Turn off</string>
+    <string name="notif_rearm_title">Standby stopped</string>
+    <string name="notif_rearm_text">Tap to open Jiàndié Camera and turn standby back on.</string>
 </resources>
