@@ -11,7 +11,7 @@
 - Root Gradle project (settings, version catalog, wrapper 8.11.1, `includeBuild(shared)`), README, CI workflow (tests + both APK artifacts).
 - All committed.
 
-Totals this stage: **40 tests, 0 failures** in sandbox. Android APK = first CI run pending (needs the repo on GitHub).
+Totals this stage: **40 tests, 0 failures** in sandbox. **Android APKs BUILT on CI** (GitHub Actions run #2 green): `jiandie-camera-debug` + `yps-viewer-debug` (~26 MB each). Repo: github.com/bwjremployment-bit/baby-monitor. Stage 2 fully complete.
 
 
 ## Done in Stage 1

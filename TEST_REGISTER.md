@@ -26,6 +26,6 @@ Columns: ID · Area · What · Type (unit/instrumented/manual-device/e2e) · Env
 | T-002 | pairing: Base32 round-trip, URI + manual-code round-trip, token derive/verify, wrong-secret & role-bound rejection, window skew | unit | cloud | **PASS** (10 tests) | 2026-11-07 |
 | T-003 | connection state-machine transitions (happy path, drop/recover, auth-fail, invalid rejected) | unit | cloud | **PASS** (7 tests) | 2026-11-07 |
 | T-SIG | signalling relay: pair camera+viewer, offer/answer/ice relay, room isolation, role enforcement, peer-leave | integration | cloud | **PASS** (2 tests) | 2026-11-07 |
-| T-004 | both Android app modules assembleDebug | build | **CI (pending first run)** | scripts parse; blocked only by sandbox egress, runs on GitHub Actions | 2026-11-07 |
+| T-004 | both Android app modules assembleDebug | build | CI (GitHub Actions) | **PASS** — run #2, both APKs produced (~26 MB each) after SDK-setup fix | 2026-11-08 |
 
 Totals in sandbox: **40 tests, 0 failures** (shared 28 + signalling 2 integration cases covering 10 assertions). Android APK build moved to CI (sandbox cannot reach dl.google.com).
