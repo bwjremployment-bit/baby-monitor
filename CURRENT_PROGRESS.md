@@ -8,7 +8,7 @@
 |---|---|
 | 1 Requirements/architecture | ✅ done |
 | 2 Foundation + CI | ✅ done — both APKs built green on CI (run #2) |
-| 3 Jiàndié Camera | 🔶 in progress (see below) |
+| 3 Jiàndié Camera | 🔶 **code complete + compiles on CI; NOT yet validated on a device** — awaiting the user's Realme 6 tests (docs/DEVICE_TEST_GUIDE.md) |
 | 4–7 | not started |
 
 ## Verified facts (evidence)
@@ -30,6 +30,9 @@ Found and fixed before building on top of them:
 - `service/TransmissionController` (standby → LIVE only after verifying a signed, single-use start-request and the viewer's signed answer; 60 s grace; locks; network callback)
 - `TransmissionService` (honest ongoing notification, Turn-off action), `NotificationHelper`, `BootReceiver` ("tap to resume"), `Arming`
 - `MainActivity` (preview + always-visible status pill + flip/flash/Radius), `RadiusActivity` (standby, QR + code pairing, server, quality, audio, relay, battery shortcuts, diagnostics)
+
+## CI status
+Latest commit builds green: shared tests, relay tests, **both APKs** (camera ~27 MB, viewer skeleton ~26 MB). A built-in **background self-test** (Radius) reports on the phone whether Android lets standby use the camera and microphone with the screen off.
 
 ## Not verified yet (do not assume these work)
 Everything Android is **compile-checked only**. Nothing has run on a phone. The critical unknown is **T-005**: that a service armed from the foreground can still open the camera on remote wake after the screen has been off for a while (Android 11 while-in-use rule). Also unverified: torch while streaming, Realme background-kill behaviour, audio capture, the QR render, encrypted prefs on the device.

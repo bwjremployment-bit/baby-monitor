@@ -28,6 +28,6 @@ Columns: ID · Area · What · Type (unit/instrumented/manual-device/e2e) · Env
 | T-002 | pairing: Base32, URI + manual-code round-trip, malformed-input rejection, room derivation, token + SDP-MAC verify/tamper/role/secret/window | unit | cloud | **PASS** (16 tests; revised 2026-11-08 for peer-to-peer auth: room derivation, SDP MAC tamper/role/secret/time) | 2026-11-08 |
 | T-003 | connection state-machine transitions (happy path, drop/recover, auth-fail, invalid rejected) | unit | cloud | **PASS** (7 tests) | 2026-11-07 |
 | T-SIG | signalling relay: pair camera+viewer, offer/answer/ice relay, room isolation, role enforcement, peer-leave | integration | cloud | **PASS** (2 tests) | 2026-11-07 |
-| T-004 | both Android app modules assembleDebug | build | CI (GitHub Actions) | **PASS** — run #2, both APKs produced (~26 MB each) after SDK-setup fix | 2026-11-08 |
+| T-004 | both Android app modules assembleDebug | build | CI (GitHub Actions) | **PASS** — latest run builds both APKs incl. full Stage 3 camera code (not a device test) | 2026-11-08 |
 
 Totals in sandbox: **36 tests, 0 failures** (shared 34 + signalling 2 integration). Android APK build moved to CI (sandbox cannot reach dl.google.com).
