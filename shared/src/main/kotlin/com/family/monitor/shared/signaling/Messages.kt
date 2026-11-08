@@ -28,17 +28,22 @@ data class IceCandidate(
  */
 @Serializable
 sealed class SignalMessage {
-    /** Client -> server: request to enter [room] as [role], authenticated by [token]. */
+    /**
+     * Client -> server: request to enter [room] as [role]. No credential here:
+     * the relay is untrusted and cannot verify one. Peers authenticate each
+     * other end-to-end (see PairingCrypto): [StartRequest.token] and the
+     * [Offer.auth] / [Answer.auth] MACs.
+     */
     @Serializable
     @SerialName("join")
-    data class Join(val room: String, val role: Role, val token: String) : SignalMessage()
+    data class Join(val room: String, val role: Role) : SignalMessage()
 
     /** Server -> client: join accepted; [peers] are the roles already present. */
     @Serializable
     @SerialName("joined")
     data class Joined(val peers: List<Role> = emptyList()) : SignalMessage()
 
-    /** Server -> client: join rejected (bad/expired token, room full, etc.). */
+    /** Server -> client: join rejected (malformed room/role, role already taken, etc.). */
     @Serializable
     @SerialName("auth-error")
     data class AuthError(val reason: String) : SignalMessage()
@@ -48,22 +53,28 @@ sealed class SignalMessage {
     @SerialName("peer")
     data class PeerEvent(val role: Role, val present: Boolean) : SignalMessage()
 
+    /** Camera -> viewer. [auth] = PairingCrypto.signSdp(...) by the camera over [sdp]. */
     @Serializable
     @SerialName("offer")
-    data class Offer(val sdp: String) : SignalMessage()
+    data class Offer(val sdp: String, val auth: String) : SignalMessage()
 
+    /** Viewer -> camera. [auth] = PairingCrypto.signSdp(...) by the viewer over [sdp]. */
     @Serializable
     @SerialName("answer")
-    data class Answer(val sdp: String) : SignalMessage()
+    data class Answer(val sdp: String, val auth: String) : SignalMessage()
 
     @Serializable
     @SerialName("ice")
     data class Ice(val candidate: IceCandidate) : SignalMessage()
 
-    /** Viewer -> camera: ask an armed camera to begin transmitting (Q3 remote start). */
+    /**
+     * Viewer -> camera: ask an armed camera to begin transmitting (Q3 remote
+     * start). [token] = PairingCrypto.deriveToken(.., Role.VIEWER, now); the
+     * camera verifies it BEFORE turning on camera/microphone.
+     */
     @Serializable
     @SerialName("start-request")
-    data object StartRequest : SignalMessage()
+    data class StartRequest(val token: String) : SignalMessage()
 
     @Serializable
     @SerialName("bye")

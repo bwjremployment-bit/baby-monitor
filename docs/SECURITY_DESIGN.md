@@ -1,54 +1,59 @@
 # SECURITY_DESIGN.md — Security & privacy
 
+*Revised 2026-11-08 (Stage 3 start): the earlier draft had the relay verifying tokens, which the zero-knowledge relay cannot do. Authentication is now end-to-end between the two peers, and the code (`shared/…/pairing/Pairing.kt`) implements and tests it.*
+
 ## 1. Threat model (private family use)
 
-Protect against: an unauthorised party connecting to the camera and viewing the baby's room; eavesdropping on the media in transit; a lost phone leaking pairing secrets; the signalling server being abused to join a room.
+Protect against: an unauthorised party watching the baby's room; eavesdropping or man-in-the-middle on the media; a **compromised or malicious signalling relay**; a lost phone leaking pairing secrets; someone who learns the room id.
 
-Out of scope: nation-state attackers, physical device compromise with full root. Target: strong, practical protection with zero paid infrastructure.
+Out of scope: nation-state attackers, a rooted/compromised endpoint phone. Target: strong, practical protection on zero-cost infrastructure.
 
-## 2. Media encryption
+## 2. Trust model — the relay is untrusted
 
-- WebRTC media is **DTLS-SRTP encrypted end-to-end by default** — not optional, cannot be turned off. Keys are negotiated per session; the signalling server never sees them.
-- Signalling runs over **WSS (TLS)** so SDP/ICE cannot be read or tampered with in transit. (Self-hosted relay uses a free Let's Encrypt cert, or TLS terminated by the free host / `cloudflared` tunnel.)
+The signalling relay (free-hosted, third-party infrastructure) sees only: the room id, who joined, and SDP/ICE blobs. It **never holds the pairing secret**, so it can neither mint nor verify credentials, and it never sees media.
 
-## 3. Pairing (Q2 = C: QR + manual code)
+Therefore authentication is **peer-to-peer**, using HMAC-SHA256 keyed by the pairing secret:
 
-1. On first run, Jiàndié Camera generates:
-   - a random **room ID** (unguessable, e.g. 128-bit),
-   - a **shared pairing secret** (high-entropy),
-   - from these, derives a signalling **auth token** (HMAC).
-2. These are packed into a pairing payload and shown as a **QR code**; a shorter human-typable **manual code** encodes the same secret (e.g. base32, grouped) as fallback.
-3. Yps Viewer scans/enters it once and stores it. From then on both sides derive the same auth token.
-4. The pairing secret is **never transmitted over the network** — it is carried out-of-band (screen → camera, or typed), which is what makes the pairing secure.
+| Control | Who proves | Who verifies | What it stops |
+|---|---|---|---|
+| **Start-request token** `deriveToken(secret, room, VIEWER, now)` | viewer | **camera**, *before* enabling camera/mic | anyone who merely learned the room id from waking or viewing the camera |
+| **SDP MAC on the offer** `signSdp(…, CAMERA, sdp)` | camera | viewer | relay injecting its own session / rogue "camera" |
+| **SDP MAC on the answer** `signSdp(…, VIEWER, sdp)` | viewer | camera | relay answering in the viewer's place |
 
-## 4. Connection authentication
+The SDP contains the **DTLS fingerprint**, so a valid MAC over the SDP means the media key exchange is bound to the pairing secret. A relay that swaps the fingerprint to MITM the media produces an SDP whose MAC fails (tested: one-character change is rejected). MACs are role-bound (a camera signature cannot be reflected back as a viewer signature), room-bound, and time-windowed (5 min, ±1 window of clock skew).
 
-- To join a signalling room a client must present a valid token derived from the pairing secret. The server rejects mismatches (`auth-error`) → Viewer shows "invalid/not paired" (V8).
-- To defeat replay/MITM on signalling, the token is **time-limited** (HMAC over room + role + time window). coturn (if used) uses the same `use-auth-secret` time-limited-credential scheme, so no static TURN password is shipped.
-- Optionally pin the expected DTLS fingerprint learned at pairing for extra assurance (Stage 5 decision).
+Residual: replaying a captured start-request inside its window can at most **wake an armed camera**; it cannot obtain video, because that requires a correctly signed answer. Documented, accepted.
+
+## 3. Media encryption
+
+WebRTC media is **DTLS-SRTP encrypted by default** (not optional). Per-session keys; the relay never sees them. Signalling runs over **WSS (TLS)** so SDP/ICE are also protected from network observers.
+
+## 4. Pairing (Q2 = C: QR + manual code)
+
+1. The camera generates a **128-bit random secret** (`SecureRandom`) on first use.
+2. The **signalling room id is derived one-way** from the secret (`HMAC(secret, "room-v1")`, 128 bits). Only the secret is transferred; the relay learns the room id but nothing about the secret.
+3. The secret is shown on the camera as a **QR code** (`jiandie://pair?v=1&s=…`) and as a **28-character manual code** (`ABCD-EFGH-…`, copy/paste or type). The viewer scans or enters it once and stores it.
+4. The secret travels **out-of-band** (screen → viewer). It is never sent over any network.
 
 ## 5. Credential storage
 
-- Secrets stored with **EncryptedSharedPreferences** backed by the **Android Keystore** (hardware-backed where available). No secrets in source, logs, or plaintext prefs.
-- **No hardcoded credentials** anywhere in the apps or server.
+Secrets live in **EncryptedSharedPreferences** backed by the **Android Keystore**. Nothing in source, logs, or plaintext prefs; no hardcoded credentials anywhere (app or server). Android `allowBackup="false"`, so pairing secrets are not copied to cloud backups.
 
-## 6. Revocation (revocable pairing)
+## 6. Revocation
 
-- Camera keeps a list of paired viewers (by a per-pairing id). "Unpair / revoke" rotates the room ID + secret (or removes that viewer's entry), instantly invalidating old tokens. Re-pair to reconnect.
+"Unpair / re-pair" generates a **new secret**, which also moves the room (room derives from the secret). Old viewers' tokens and signatures stop verifying immediately and they cannot even reach the new room. Re-pair the viewer to resume.
 
 ## 7. Privacy posture
 
-- **No public feed:** a room only exists between paired devices gated by the token; room IDs are unguessable.
-- **No unnecessary storage:** media is live-only; nothing recorded or uploaded. No analytics, no third-party SDKs that phone home.
-- **OS transparency respected:** Android's camera/mic active indicators and the foreground-service notification are shown, never suppressed. This is both a compliance requirement and a safety property for an honest monitor.
+- **No public feed:** media only flows to a peer that proves possession of the pairing secret.
+- **No storage:** live-only; nothing recorded or uploaded. No analytics, no third-party SDKs that phone home.
+- **OS transparency respected:** Android's camera/mic indicators and the foreground-service notification are shown and never suppressed. The camera app displays its own live/transmitting state. Starting capture on a remote request still shows the notification and indicators.
 
-## 8. Server hardening
+## 8. Relay hardening
 
-- Signalling relay: validates message shape, enforces token on `join`, rate-limits, rooms are ephemeral and auto-expire, stores nothing. Runs over WSS only.
-- If self-hosting TURN/coturn: restrict relay IP ranges, enable `fingerprint`, `use-auth-secret`, deny loopback/private peers (`no-multicast-peers`, `denied-peer-ip`).
+Validates message shape and size (64 KiB cap), enforces one camera + one viewer per room, rooms are ephemeral and stored nowhere, WSS only. If a TURN service is used: time-limited credentials only (never a static password in the app), deny private/loopback peer ranges.
 
-## 9. Open items for later stages
+## 9. Open items
 
-- Finalise token time-window + clock-skew tolerance (Stage 5).
-- Decide whether to pin DTLS fingerprint at pairing (Stage 5).
-- Confirm Keystore behaviour on the specific spare-phone Android version (Stage 3/6).
+- Confirm Keystore behaviour on the Realme 6 (Android 10/11) during Stage 3/6 device testing.
+- Optional later hardening: a per-device pairing (one secret per viewer) so a single viewer can be revoked without re-pairing all; not needed for a single-viewer family setup.

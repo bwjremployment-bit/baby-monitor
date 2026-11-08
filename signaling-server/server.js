@@ -3,17 +3,21 @@
 // Responsibilities (deliberately minimal):
 //   - Group two peers (one "camera", one "viewer") into a room by room id.
 //   - Relay offer / answer / ice / start-request / bye between them, verbatim.
-//   - Enforce: room has at most one of each role; messages never cross rooms.
+//   - Enforce: at most one of each role per room; messages never cross rooms.
 //
-// What it deliberately does NOT do:
-//   - It never sees the pairing secret and cannot read media. The room id is a
-//     128-bit unguessable bearer capability just to *reach* signalling; the
-//     cryptographic auth (HMAC token from the pairing secret) is verified
-//     PEER-TO-PEER (camera verifies viewer) so a compromised relay cannot mint
-//     access or decrypt anything (media is DTLS-SRTP end-to-end).
+// Trust model — the relay is UNTRUSTED:
+//   - It never holds the pairing secret, so it can neither mint nor verify
+//     credentials. The room id is derived one-way from the secret (so knowing
+//     the room id reveals nothing about the secret) and is only a rendezvous
+//     point.
+//   - Authentication is end-to-end between the peers: the camera verifies the
+//     viewer's start-request token before enabling capture, and each side
+//     verifies an HMAC over the other's SDP (which binds the DTLS fingerprint),
+//     so a malicious relay cannot inject a session or MITM the media. Media is
+//     DTLS-SRTP and never touches this server.
 //
-// Portable: plain `ws`, no persistence. Runs on a home machine, Deno Deploy
-// (via its WebSocket API), Cloudflare, Fly, etc. Free to host.
+// Portable: plain `ws`, no persistence. Runs on a home machine, Deno Deploy,
+// Cloudflare, Fly, etc. Free to host.
 
 import { WebSocketServer } from "ws";
 

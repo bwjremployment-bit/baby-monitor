@@ -25,4 +25,4 @@ Open the repo root in Android Studio (Giraffe+). It builds `:camera` and `:viewe
 Push to GitHub → the `build` workflow runs tests and uploads `jiandie-camera-debug` and `yps-viewer-debug` APK artifacts. Download + sideload to the phones.
 
 ## Status
-Stage 2 (project foundation) complete. `shared` (28 tests) and `signaling-server` (2 tests) pass in the sandbox; the Android APK build is wired and parses, pending its first CI run. See `CURRENT_PROGRESS.md`.
+Stage 2 complete; Stage 3 (Jiàndié Camera) in progress. `shared` (34 tests) and `signaling-server` (2 tests) pass in the sandbox and on CI; both APKs build on CI. See `CURRENT_PROGRESS.md`.

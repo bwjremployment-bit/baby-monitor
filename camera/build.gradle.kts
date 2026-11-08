@@ -40,4 +40,6 @@ dependencies {
     implementation(libs.webrtc)
     implementation(libs.zxing.core)
     implementation(libs.androidx.security.crypto)
+    implementation(libs.okhttp)
+    implementation(libs.kotlinx.coroutines.android)
 }

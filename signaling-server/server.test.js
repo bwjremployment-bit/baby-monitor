@@ -21,12 +21,12 @@ test("relay: camera + viewer pair, offer/answer/ice forwarded, role enforced", a
   const camMsgs = [];
   const viewMsgs = [];
   const cam = await open((m) => camMsgs.push(m));
-  cam.send(JSON.stringify({ type: "join", room: "room-abcdef12", role: "camera", token: "t" }));
+  cam.send(JSON.stringify({ type: "join", room: "room-abcdef12", role: "camera" }));
   await wait(50);
   assert.deepEqual(camMsgs.at(-1), { type: "joined", peers: ["camera"] });
 
   const view = await open((m) => viewMsgs.push(m));
-  view.send(JSON.stringify({ type: "join", room: "room-abcdef12", role: "viewer", token: "t" }));
+  view.send(JSON.stringify({ type: "join", room: "room-abcdef12", role: "viewer" }));
   await wait(50);
   // viewer sees both peers present; camera is told viewer arrived
   assert.ok(viewMsgs.some((m) => m.type === "joined" && m.peers.includes("camera")));
@@ -50,7 +50,7 @@ test("relay: camera + viewer pair, offer/answer/ice forwarded, role enforced", a
   // a second camera in the same room is rejected
   const dupMsgs = [];
   const dup = await open((m) => dupMsgs.push(m));
-  dup.send(JSON.stringify({ type: "join", room: "room-abcdef12", role: "camera", token: "t" }));
+  dup.send(JSON.stringify({ type: "join", room: "room-abcdef12", role: "camera" }));
   await wait(50);
   assert.ok(dupMsgs.some((m) => m.type === "auth-error" && m.reason === "role-taken"));
 
@@ -69,9 +69,9 @@ test("isolation: messages never cross rooms; leave notifies peer", async (t) => 
   };
   const aMsgs = [], bMsgs = [];
   const a = await mk(aMsgs);
-  a.send(JSON.stringify({ type: "join", room: "room-aaaaaaa1", role: "camera", token: "t" }));
+  a.send(JSON.stringify({ type: "join", room: "room-aaaaaaa1", role: "camera" }));
   const b = await mk(bMsgs);
-  b.send(JSON.stringify({ type: "join", room: "room-bbbbbbb2", role: "viewer", token: "t" }));
+  b.send(JSON.stringify({ type: "join", room: "room-bbbbbbb2", role: "viewer" }));
   await wait(50);
 
   a.send(JSON.stringify({ type: "offer", sdp: "SECRET" }));
@@ -81,7 +81,7 @@ test("isolation: messages never cross rooms; leave notifies peer", async (t) => 
   // same-room peer departure is signalled
   const cMsgs = [];
   const c = await mk(cMsgs);
-  c.send(JSON.stringify({ type: "join", room: "room-aaaaaaa1", role: "viewer", token: "t" }));
+  c.send(JSON.stringify({ type: "join", room: "room-aaaaaaa1", role: "viewer" }));
   await wait(50);
   c.close();
   await wait(50);

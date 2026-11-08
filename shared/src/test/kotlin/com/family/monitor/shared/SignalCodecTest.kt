@@ -16,20 +16,20 @@ class SignalCodecTest {
         assertEquals(msg, SignalCodec.decode(text))
     }
 
-    @Test fun join_round_trips() = roundTrip(SignalMessage.Join("room1", Role.VIEWER, "tok123"))
+    @Test fun join_round_trips() = roundTrip(SignalMessage.Join("room1", Role.VIEWER))
     @Test fun joined_round_trips() = roundTrip(SignalMessage.Joined(listOf(Role.CAMERA)))
     @Test fun auth_error_round_trips() = roundTrip(SignalMessage.AuthError("bad token"))
     @Test fun peer_event_round_trips() = roundTrip(SignalMessage.PeerEvent(Role.CAMERA, true))
-    @Test fun offer_round_trips() = roundTrip(SignalMessage.Offer("v=0\r\no=- ..."))
-    @Test fun answer_round_trips() = roundTrip(SignalMessage.Answer("v=0\r\no=- ..."))
+    @Test fun offer_round_trips() = roundTrip(SignalMessage.Offer("v=0\r\no=- ...", "authA"))
+    @Test fun answer_round_trips() = roundTrip(SignalMessage.Answer("v=0\r\no=- ...", "authB"))
     @Test fun ice_round_trips() =
         roundTrip(SignalMessage.Ice(IceCandidate("0", 0, "candidate:1 1 udp ...")))
-    @Test fun start_request_round_trips() = roundTrip(SignalMessage.StartRequest)
+    @Test fun start_request_round_trips() = roundTrip(SignalMessage.StartRequest("tok"))
     @Test fun bye_round_trips() = roundTrip(SignalMessage.Bye("done"))
 
     @Test fun decodes_camera_role_name() {
-        val msg = SignalCodec.decode("""{"type":"join","room":"r","role":"camera","token":"t"}""")
-        assertEquals(SignalMessage.Join("r", Role.CAMERA, "t"), msg)
+        val msg = SignalCodec.decode("""{"type":"join","room":"r","role":"camera"}""")
+        assertEquals(SignalMessage.Join("r", Role.CAMERA), msg)
     }
 
     @Test fun tolerates_unknown_fields() {

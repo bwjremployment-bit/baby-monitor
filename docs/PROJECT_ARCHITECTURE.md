@@ -32,32 +32,25 @@
 - **STUN:** lets each peer learn its public address for NAT traversal. Stateless and cheap.
 - **TURN:** relay fallback used only when direct P2P is impossible (symmetric NAT / CGNAT). The one component with a real zero-cost challenge — see CONNECTIVITY_DESIGN.md.
 
-## 2. Project / module layout (Gradle, to be created in Stage 2)
+## 2. Project / module layout (as built in Stage 2)
 
 ```
-babymonitor/                      (Gradle root, settings.gradle.kts)
-├── gradle/ libs.versions.toml     version catalog (shared dependency versions)
-├── build-logic/ or convention     shared build config
-├── core/                          Android library module — SHARED code
-│   ├── signaling/                 WS client, message schema (offer/answer/ice/join/auth)
-│   ├── webrtc/                    PeerConnectionFactory setup, ICE config, helpers
-│   ├── pairing/                   pairing payload model, QR encode/decode, code format
-│   ├── crypto/                    key/token generation, Keystore-backed storage
-│   └── model/                     shared data types, connection state machine
-├── camera/                        Android application module — Jiàndié Camera
-│   ├── ui/                        camera screen, Radius settings
-│   ├── capture/                   camera + mic capture → WebRTC tracks
-│   └── service/                   foreground TransmissionService, boot receiver
-├── viewer/                        Android application module — Yps Viewer
-│   ├── ui/                        live view, pairing (scan/enter), status
-│   └── playback/                  remote track rendering + audio
-├── signaling-server/              NON-Android: tiny Node/Deno WS relay (free-hostable)
-│   ├── server.js
-│   └── README (deploy: home machine / Deno Deploy / Cloudflare / Fly — user picks)
-└── docs/ + tracking md files
+babymonitor/                       Gradle root (settings.gradle.kts, version catalog)
+├── shared/                        STANDALONE pure-Kotlin build — consumed via includeBuild
+│   ├── signaling/                 message protocol (sealed SignalMessage + JSON codec)
+│   ├── pairing/                   PairingPayload (QR URI + manual code), Base32,
+│   │                              PairingCrypto (room derivation, tokens, SDP MACs)
+│   └── state/                     ConnectionState + deterministic state machine
+│   (buildable + unit-testable anywhere with just a JDK; 34 tests)
+├── camera/                        Android app — Jiàndié Camera (com.family.jiandie.camera)
+├── viewer/                        Android app — Yps Viewer (com.family.yps.viewer)
+├── signaling-server/              Node `ws` zero-knowledge relay (free-hostable)
+└── .github/workflows/android.yml  CI: tests + builds both APKs
 ```
 
-Two application modules (`camera`, `viewer`) are **independently installable APKs**. Shared logic lives in `core` so both halves speak the exact same signalling + pairing protocol — this is what keeps them two halves of one system.
+Why `shared/` is a separate build: the development sandbox cannot reach Google's Maven (Android Gradle Plugin / AndroidX), so the protocol, pairing and crypto code is kept free of Android so it can be built and tested anywhere. The apps consume it as `com.family.monitor:shared` via `includeBuild`. APKs are compiled on GitHub Actions. Android-specific code (WebRTC, OkHttp transport, Keystore storage, services, UI) lives in the app modules.
+
+Both apps are **independently installable APKs** speaking the identical protocol from `shared/`, which is what keeps them two halves of one system.
 
 ## 3. Jiàndié Camera (transmitter) architecture
 

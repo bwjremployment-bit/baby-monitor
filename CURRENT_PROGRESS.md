@@ -1,43 +1,36 @@
 # CURRENT_PROGRESS.md
 
-**Stage:** 2 (foundation) — core + signalling built & tested in sandbox; Android build wired for CI. **Next:** first CI run to produce APKs, then Stage 3.
-**Updated:** 2026-11-07.
+**Stage:** 3 — Jiàndié Camera (in progress). Stages 1–2 complete.
+**Updated:** 2026-11-08. **Repo:** https://github.com/bwjremployment-bit/baby-monitor (branch `master`; CI builds both APKs on every push).
 
-## Done in Stage 2
-- **Hard finding:** sandbox egress blocks `dl.google.com` → Android SDK + Google Maven (AGP/AndroidX) unreachable here. APK compilation moved to **free GitHub Actions CI** (`.github/workflows/android.yml`). Proven: Gradle scripts parse; only AGP resolution is blocked.
-- **`shared/`** standalone Kotlin lib (buildable/testable here): signalling message protocol (kotlinx.serialization), pairing (Base32, QR-URI + manual code, HMAC time-windowed tokens), connection state machine. **28 unit tests PASS.**
-- **`signaling-server/`** Node `ws` zero-knowledge relay (never sees secret/media): rooms, role enforcement, offer/answer/ice relay, isolation, peer-leave. **2 integration tests PASS.**
-- **`camera/`** + **`viewer/`** Android app modules: manifests (permissions, foreground camera+mic service, boot receiver), minimal honest UI stubs, TransmissionService (FGS + silent ongoing notification), dependency wiring (WebRTC `io.github.webrtc-sdk`, zxing, security-crypto, shared). Compile on CI.
-- Root Gradle project (settings, version catalog, wrapper 8.11.1, `includeBuild(shared)`), README, CI workflow (tests + both APK artifacts).
-- All committed.
+## Stage status
+| Stage | State |
+|---|---|
+| 1 Requirements/architecture | ✅ done |
+| 2 Foundation + CI | ✅ done — both APKs built green on CI (run #2) |
+| 3 Jiàndié Camera | 🔶 in progress (see below) |
+| 4–7 | not started |
 
-Totals this stage: **40 tests, 0 failures** in sandbox. **Android APKs BUILT on CI** (GitHub Actions run #2 green): `jiandie-camera-debug` + `yps-viewer-debug` (~26 MB each). Repo: github.com/bwjremployment-bit/baby-monitor. Stage 2 fully complete.
+## Verified facts (evidence)
+- `shared/` (pure Kotlin): **34 unit tests pass** locally and on CI.
+- `signaling-server/`: **2 integration tests pass** locally and on CI.
+- Both app modules **compile and package** on CI (Stage 2 skeleton). No functional on-device testing has happened yet.
+- Sandbox cannot reach `dl.google.com` → Android compiled only on GitHub Actions.
 
+## Stage 3 tidy-up done at session start (2026-11-08)
+Found and fixed before building on top of them:
+1. **Auth was not actually implemented** (docs claimed peer-to-peer verification; nothing did it) and a malicious relay could swap the DTLS fingerprint. Now: viewer `start-request` carries a token the **camera verifies before enabling capture**; offer/answer carry an **HMAC over the SDP** (binds DTLS fingerprint). 6 new tests.
+2. **Manual pairing code was ~79 chars** → room now derived one-way from a single 128-bit secret → **28 chars**.
+3. Stale docs corrected: module layout (`shared/` not `core/`), TD-006 (no home TURN), security design rewritten, test counts.
 
-## Done in Stage 1
-- Inspected cloud build env: Java 21, Gradle, Node 22, Python 3.13, git present. **No Android SDK** (install in Stage 2). No physical device in this env.
-- Agreed scope correction: **honest baby monitor**, not a disguised/covert camera (see MASTER_PROJECT §2). Covert features refused; all legitimate streaming capability retained.
-- Captured setup answers Q1–Q5 (Q1 pending exact device version).
-- Wrote all Stage 1 deliverables:
-  - `docs/PROJECT_ARCHITECTURE.md`, `docs/REQUIREMENTS.md`, `docs/CONNECTIVITY_DESIGN.md`, `docs/SECURITY_DESIGN.md`, `docs/RISK_REGISTER.md`
-  - `TECHNICAL_DECISIONS.md`, `DEVELOPMENT_ROADMAP.md`, `TEST_REGISTER.md`, `BUG_REGISTER.md`, `MASTER_PROJECT.md`, this file, `NEXT_SESSION_INSTRUCTIONS.md`
-- Initialised git repo at `/home/user/babymonitor`.
+## Stage 3 remaining work (not yet built)
+WebRTC capture/preview layer · OkHttp signalling client · Keystore storage + QR · TransmissionController/Service (armed → live on authenticated start-request, network monitoring, reconnection) · real camera UI + Radius screen · CI green · on-device validation (user, Realme 6).
 
-## Key decisions locked
-- Kotlin + WebRTC (`io.github.webrtc-sdk:android`, fallback GetStream); foreground service (camera+mic); self-written WSS signalling relay; STUN public/self; TURN self-hosted coturn if NAT needs it; EncryptedSharedPreferences+Keystore; QR via ML Kit/ZXing. (See TECHNICAL_DECISIONS.md.)
+## Decisions / user answers (see MASTER_PROJECT.md, TECHNICAL_DECISIONS.md)
+- Honest-monitor scope (no covert/disguised features). Camera phone = Realme 6 (Android 10/11) → minSdk 29. Pairing = QR + manual code. Manual start + optional auto-start + viewer remote-wake when armed. Balanced quality. Signalling relay on a free host (Deno Deploy suggested; user creates any login).
+- Usage is **on-demand** (≤~4 h, ~3×/week) → free TURN tier suffices if needed; IPv6-direct preferred.
 
-## User answers received (2026-11-07)
-- **OQ-3 → camera phone = Realme 6** (RMX2001; shipped Android 10, max Android 11). minSdk set to **29 (Android 10)** — widest practical, covers the device. Viewer phone version still unconfirmed (not blocking; viewer just needs to run the viewer app).
-- **OQ-2 → "no preference, pick best"** → decision: **Deno Deploy** free tier for the signalling relay (WebSocket support, no credit card, deploy from a repo). Alt: home always-on machine if one exists. User creates the free login themselves; I create no accounts.
-- **OQ-1 → home internet is LTE** (modem = **Sagemcom 5366 LTE**). This is the big one — see below.
-
-## CRITICAL CONNECTIVITY FINDING (from modem screenshot)
-Home internet is **cellular LTE**, so it is almost certainly behind **carrier-grade NAT (CGNAT)**: no public IPv4, port-forwarding impossible. Consequences:
-- **Self-hosted coturn at home is NOT viable** (home is not publicly reachable). TD-006 / R1 updated.
-- Both ends are likely cellular CGNAT (home LTE + viewer mobile data) → **direct IPv4 P2P will frequently fail**.
-- **Best zero-cost path to a direct connection = IPv6**, IF both the home LTE and the viewer's mobile data hand out public IPv6. Many carriers do. This needs checking (new OQ-4).
-- If IPv6 isn't available on both ends, a **publicly-hosted TURN relay** is required, and free TURN under *continuous* monitoring is genuinely constrained (free tiers cap monthly GB). This is an honest feasibility limit to resolve with the user, not to paper over.
-
-## Still open
-- **OQ-4 (new, important):** which mobile carrier(s) are the home LTE modem and the viewer phone on, and do they provide IPv6? (Determines whether a truly-free direct connection is possible.)
+## Open questions
+- **OQ-4:** home LTE carrier + viewer carrier, and IPv6 support (decides whether TURN is needed). Needed by Stage 5.
+- Where/when to deploy the signalling relay (needed by Stage 5; user must create the free hosting login).
 - Viewer phone Android version (minor).

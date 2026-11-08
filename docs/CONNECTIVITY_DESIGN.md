@@ -26,7 +26,7 @@ Decision recorded in TECHNICAL_DECISIONS.md (TD-002). Fallback documented so Sta
 
 Purpose: exchange SDP offer/answer + ICE candidates, and gate room entry by auth token. Tiny, bursty traffic only during connection setup + reconnects. **Never carries media.**
 
-Message schema (JSON over WSS): `join{room, role, token}` → `joined{peers}` / `auth-error`; `offer{sdp}`, `answer{sdp}`, `ice{candidate}`, `bye`, plus `start-request` (viewer→camera, for Q3 remote start).
+Message schema (JSON over WSS): `join{room, role}` → `joined{peers}` / `auth-error`; `peer{role, present}`; `offer{sdp, auth}`, `answer{sdp, auth}`, `ice{candidate}`, `bye`, plus `start-request{token}` (viewer→camera, Q3 remote start). `token` and `auth` are end-to-end HMACs verified by the *peer*, not the relay (see SECURITY_DESIGN §2).
 
 **Server:** ~150-line Node (`ws`) or Deno WebSocket relay that we write and own. Rooms are ephemeral; it stores nothing persistent.
 
@@ -48,7 +48,9 @@ I will **not** create any of these accounts for you. We write portable code (pla
 
 TURN relays media when direct P2P fails. Direct P2P succeeds in most home-Wi-Fi ↔ mobile-data cases, **but mobile carriers frequently use CGNAT (symmetric NAT)**, which can force a TURN relay. There is no reliably-free *public* TURN we can depend on.
 
-Zero-cost paths, in preference order:
+> **Superseded by §5a:** home is LTE/CGNAT, so option 1 below (home coturn) is **not viable**. Kept for the record.
+
+Zero-cost paths, in preference order (original analysis):
 1. **Self-hosted `coturn` at home** — free software. Works **if** the home router has a public IPv4 and you can port-forward (or the ISP gives a static/public IP). This is the most robust zero-cost TURN. Needs: open UDP/TCP 3478 (+ TLS 5349) and a relay port range. Credentials via coturn's time-limited HMAC (`use-auth-secret`) so no static passwords ship in the app.
 2. **coturn on the same free host** as signalling (Fly/Deno are not ideal for TURN's port ranges; a small free-tier VM elsewhere may be needed — flag if chosen).
 3. **Free public TURN tiers** (e.g. Open Relay / metered free tier) — usable as a *fallback* but availability/limits are outside our control; documented as best-effort, not a dependency.
