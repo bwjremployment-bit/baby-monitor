@@ -55,4 +55,16 @@ class ConnectionStateMachineTest {
         assertEquals(ConnectionState.SIGNALING_CONNECTING, m.on(ConnectionEvent.RETRY))
         assertFalse(m.isTerminal())
     }
+
+    @Test fun session_can_end_on_purpose_from_any_active_state() {
+        for (start in listOf(ConnectionState.PEER_CONNECTING, ConnectionState.LIVE, ConnectionState.PEER_RECONNECTING)) {
+            val m = ConnectionStateMachine(start)
+            assertEquals(ConnectionState.SIGNALING_READY, m.on(ConnectionEvent.PEER_LEFT), "from $start")
+        }
+    }
+
+    @Test fun peer_left_is_invalid_when_no_session_exists() {
+        val m = ConnectionStateMachine(ConnectionState.SIGNALING_READY)
+        assertNull(m.on(ConnectionEvent.PEER_LEFT))
+    }
 }

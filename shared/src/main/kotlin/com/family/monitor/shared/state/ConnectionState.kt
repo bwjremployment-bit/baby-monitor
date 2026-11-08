@@ -20,6 +20,7 @@ enum class ConnectionEvent {
     PEER_FOUND,            // the other peer is present; begin negotiation
     PEER_CONNECTED,        // media flowing
     PEER_DROPPED,          // media/ICE lost but we will try to recover
+    PEER_LEFT,             // the session ended on purpose; back to waiting for a peer
     NETWORK_LOST,          // transport gone
     FATAL,                 // unrecoverable error
     RETRY,                 // manual or automatic retry request
@@ -50,15 +51,18 @@ class ConnectionStateMachine(initial: ConnectionState = ConnectionState.DISCONNE
         put(ConnectionState.PEER_CONNECTING to ConnectionEvent.PEER_DROPPED, ConnectionState.PEER_RECONNECTING)
         put(ConnectionState.PEER_CONNECTING to ConnectionEvent.NETWORK_LOST, ConnectionState.PEER_RECONNECTING)
         put(ConnectionState.PEER_CONNECTING to ConnectionEvent.FATAL, ConnectionState.FAILED)
+        put(ConnectionState.PEER_CONNECTING to ConnectionEvent.PEER_LEFT, ConnectionState.SIGNALING_READY)
 
         put(ConnectionState.LIVE to ConnectionEvent.PEER_DROPPED, ConnectionState.PEER_RECONNECTING)
         put(ConnectionState.LIVE to ConnectionEvent.NETWORK_LOST, ConnectionState.PEER_RECONNECTING)
         put(ConnectionState.LIVE to ConnectionEvent.FATAL, ConnectionState.FAILED)
+        put(ConnectionState.LIVE to ConnectionEvent.PEER_LEFT, ConnectionState.SIGNALING_READY)
 
         put(ConnectionState.PEER_RECONNECTING to ConnectionEvent.PEER_CONNECTED, ConnectionState.LIVE)
         put(ConnectionState.PEER_RECONNECTING to ConnectionEvent.SIGNALING_OPEN, ConnectionState.SIGNALING_READY)
         put(ConnectionState.PEER_RECONNECTING to ConnectionEvent.CONNECT_SIGNALING, ConnectionState.SIGNALING_CONNECTING)
         put(ConnectionState.PEER_RECONNECTING to ConnectionEvent.FATAL, ConnectionState.FAILED)
+        put(ConnectionState.PEER_RECONNECTING to ConnectionEvent.PEER_LEFT, ConnectionState.SIGNALING_READY)
 
         // Recovery / teardown available from terminal-ish states.
         put(ConnectionState.FAILED to ConnectionEvent.RETRY, ConnectionState.SIGNALING_CONNECTING)

@@ -37,6 +37,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.lifecycle.service)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.webrtc)
     implementation(libs.zxing.core)
     implementation(libs.androidx.security.crypto)
