@@ -31,7 +31,7 @@ import java.util.concurrent.CopyOnWriteArrayList
  */
 class CameraEngine private constructor(private val app: Context) {
 
-    enum class Reason { PREVIEW, LIVE }
+    enum class Reason { PREVIEW, LIVE, TEST }
 
     interface Listener {
         fun onCameraError(message: String)

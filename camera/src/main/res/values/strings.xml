@@ -56,6 +56,11 @@
     <string name="battery_exempt">Allow background battery use</string>
     <string name="app_settings">Open app settings</string>
 
+    <string name="selftest">Background self-test (30 s)</string>
+    <string name="selftest_hint">Checks that this phone lets the app use the camera and microphone with the screen off. Turn on standby, tap this, lock the screen, wait about 40 seconds, unlock and read the Diagnostics log.</string>
+    <string name="notif_selftest_title">Jiàndié Camera — self-test</string>
+    <string name="notif_selftest_text">Briefly testing the camera and microphone. Nothing is being sent.</string>
+
     <string name="sec_diag">Diagnostics</string>
     <string name="copy_log">Copy log</string>
     <string name="log_copied">Log copied</string>

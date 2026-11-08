@@ -171,6 +171,8 @@ class RadiusActivity : AppCompatActivity() {
         content.addView(small(getString(R.string.keep_hint)))
         content.addView(spaced(button(R.string.battery_exempt) { requestBatteryExemption() }, 8))
         content.addView(spaced(button(R.string.app_settings) { openAppSettings() }, 8))
+        content.addView(small(getString(R.string.selftest_hint)))
+        content.addView(spaced(button(R.string.selftest) { controller.runSelfTest(30) }, 4))
 
         // --- diagnostics ---
         content.addView(section(getString(R.string.sec_diag)))
@@ -271,6 +273,7 @@ class RadiusActivity : AppCompatActivity() {
             appendLine("Streaming ...... $streaming")
             appendLine("Path ........... ${s.path ?: "-"}")
             appendLine("Requests ....... ${s.startsAccepted} accepted, ${s.startsRejected} refused")
+            if (s.selfTest != null) appendLine("Self-test ...... ${s.selfTest}")
             append("Last problem ... ${s.lastError ?: "-"}")
         }
         armButton.text = getString(if (s.mode == Mode.OFF) R.string.arm else R.string.disarm)

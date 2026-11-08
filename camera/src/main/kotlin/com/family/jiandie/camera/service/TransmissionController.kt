@@ -1,6 +1,15 @@
 package com.family.jiandie.camera.service
 
+import android.annotation.SuppressLint
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
+import android.os.SystemClock
+import androidx.core.content.ContextCompat
+import org.webrtc.VideoSink
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.wifi.WifiManager
@@ -55,6 +64,8 @@ class TransmissionController private constructor(private val app: Context) {
         val lastError: String? = null,
         val startsAccepted: Int = 0,
         val startsRejected: Int = 0,
+        /** null, "waiting" or "running" — the background self-test (see [runSelfTest]). */
+        val selfTest: String? = null,
     )
 
     private val prefs = SecurePrefs.get(app)
@@ -121,6 +132,72 @@ class TransmissionController private constructor(private val app: Context) {
         machine.on(ConnectionEvent.DISCONNECT)
         publish { Status(connection = machine.state, lastError = lastError) }
         log("Standby off.")
+    }
+
+    /**
+     * Background self-test. Answers the design's biggest question on a real phone, with no
+     * viewer or server: after [delaySeconds] (lock the screen meanwhile) the standby service
+     * briefly opens the camera and microphone and reports whether Android allowed it.
+     * It is announced in the notification and the log; it is never hidden.
+     */
+    fun runSelfTest(delaySeconds: Int = 30) {
+        if (_status.value.mode != Mode.ARMED || _status.value.selfTest != null) {
+            log("Self-test: turn on standby first (and wait for any earlier test to finish).")
+            return
+        }
+        publish { copy(selfTest = "waiting") }
+        log("Self-test starts in $delaySeconds s. Lock the screen now, then unlock after about ${delaySeconds + 10} s.")
+        main.postDelayed({ doSelfTest() }, delaySeconds * 1000L)
+    }
+
+    private fun doSelfTest() {
+        if (_status.value.mode != Mode.ARMED) { publish { copy(selfTest = null) }; return }
+        publish { copy(selfTest = "running") }
+        val frames = java.util.concurrent.atomic.AtomicInteger()   // written on the camera thread
+        val counter = VideoSink { frames.incrementAndGet() }
+        engine.addSink(counter)
+        engine.acquire(CameraEngine.Reason.TEST, prefs.quality, prefs.preferFrontCamera)
+        val mic = java.util.concurrent.atomic.AtomicReference(if (prefs.sendAudio) "…" else "skipped (sound is switched off)")
+        if (prefs.sendAudio) Thread { mic.set(probeMic()) }.start()
+        main.postDelayed({
+            engine.removeSink(counter)
+            engine.release(CameraEngine.Reason.TEST)
+            val n = frames.get()
+            val cam = if (n > 0) "OK ($n frames in 4 s)" else "FAILED — no frames, Android is probably blocking the camera"
+            log("Self-test result — camera: $cam; microphone: ${mic.get()}")
+            publish { copy(selfTest = null) }
+        }, 4000)
+    }
+
+    /** Listens for ~1.5 s. Android 11+ silently delivers all-zero audio to a blocked background app. */
+    @SuppressLint("MissingPermission")
+    private fun probeMic(): String {
+        if (ContextCompat.checkSelfPermission(app, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
+            return "no permission"
+        val rate = 16000
+        val min = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+        if (min <= 0) return "unavailable"
+        val rec = try {
+            AudioRecord(MediaRecorder.AudioSource.MIC, rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, min * 2)
+        } catch (e: Exception) { return "error: ${e.message}" }
+        return try {
+            if (rec.state != AudioRecord.STATE_INITIALIZED) return "could not start"
+            rec.startRecording()
+            val buf = ShortArray(rate / 2)
+            var total = 0; var peak = 0
+            val end = SystemClock.elapsedRealtime() + 1500
+            while (SystemClock.elapsedRealtime() < end) {
+                val n = rec.read(buf, 0, buf.size)
+                if (n < 0) break
+                total += n
+                for (i in 0 until n) peak = maxOf(peak, kotlin.math.abs(buf[i].toInt()))
+            }
+            when {
+                total == 0 -> "FAILED — no samples"
+                peak == 0 -> "SILENT — Android is blocking the microphone in the background"
+                else -> "OK (loudest sample $peak)"
+            }
+        } finally { rec.release() }
     }
 
     /** Manual "stop streaming now": back to standby, camera and microphone off. */

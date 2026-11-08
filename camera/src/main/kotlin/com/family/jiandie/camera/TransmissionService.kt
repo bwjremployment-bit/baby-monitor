@@ -97,6 +97,8 @@ class TransmissionService : LifecycleService() {
     private fun buildNotification(s: TransmissionController.Status): Notification {
         val audio = SecurePrefs.get(this).sendAudio
         val (title, text) = when {
+            s.selfTest == "running" ->
+                getString(R.string.notif_selftest_title) to getString(R.string.notif_selftest_text)
             s.mode == Mode.LIVE ->
                 getString(R.string.notif_live_title) to
                     getString(if (audio) R.string.notif_live_text_av else R.string.notif_live_text_v)
