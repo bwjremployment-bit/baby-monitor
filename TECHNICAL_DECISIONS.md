@@ -59,3 +59,10 @@ Each decision: context → options → choice → rationale → fallback. Revisi
 ## TD-012 — Build split & where compilation happens
 - **Choice:** `shared/` is a standalone JVM Gradle build (testable anywhere); apps consume it via `includeBuild`; APKs are built on GitHub Actions.
 - **Why:** sandbox egress blocks dl.google.com (Android SDK + Google Maven). Verified Stage 2; first CI run failed only on a setup-android quirk (removed `tools` package), fixed.
+
+## TD-013 — Standby ("armed") model and Android background rules
+- **Choice:** two-level model. **Standby** = foreground service + signalling socket open, camera and microphone *off*. **LIVE** = camera/mic on, only after the camera verifies a signed single-use start-request from the paired viewer. Auto-return to standby 60 s after the viewer goes away.
+- **Why:** matches the on-demand usage (≤~4 h, ~3×/week): negligible idle data/battery and no capture while nobody watches. Honest by construction: notification text says "camera and microphone are off" vs "LIVE".
+- **Android 11+ rule:** a foreground service started from the background cannot access camera/mic. Therefore arm from the visible app; after reboot/kill ask the user to tap a notification to re-arm (no silent auto-resume). Foreground service types camera|microphone declared (types applied on API 30+; plain foreground on API 29).
+- **Photo shutter:** deliberately omitted from the main screen (no photo storage feature; a dead shutter button would be misleading UI).
+

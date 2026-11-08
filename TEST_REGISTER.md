@@ -10,7 +10,9 @@ Columns: ID · Area · What · Type (unit/instrumented/manual-device/e2e) · Env
 | T-002 | core/pairing | QR payload + manual-code round-trip; token derivation/verify | unit | cloud |
 | T-003 | core/state | connection state-machine transitions | unit | cloud |
 | T-004 | build | both app modules assemble (assembleDebug) | build | cloud |
-| T-005 | camera | foreground service survives background/screen-off/lock | manual-device | phone |
+| T-005 | camera | **arm from Radius → lock screen → wait 10+ min → viewer wake still works (while-in-use camera from a background-held FGS on Android 11)** — THE critical assumption | manual-device | Realme 6 |
+| T-005b | camera | reboot / force-stop while armed → "tap to resume" notification appears; tap re-arms | manual-device | Realme 6 |
+| T-005c | camera | ColorOS background/auto-launch settings: does standby survive overnight? | manual-device | Realme 6 |
 | T-006 | camera | camera switch / torch | manual-device | phone |
 | T-007 | viewer | pair via QR + via manual code | manual-device | phone |
 | T-008 | e2e | same-network live A/V | e2e | phones (LAN) |
