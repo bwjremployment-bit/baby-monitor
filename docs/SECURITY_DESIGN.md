@@ -16,13 +16,15 @@ Therefore authentication is **peer-to-peer**, using HMAC-SHA256 keyed by the pai
 
 | Control | Who proves | Who verifies | What it stops |
 |---|---|---|---|
-| **Start-request token** `deriveToken(secret, room, VIEWER, now)` | viewer | **camera**, *before* enabling camera/mic | anyone who merely learned the room id from waking or viewing the camera |
+| **Start-request MAC** `signStart(secret, room, nonce, now)` + one-time nonce | viewer | **camera**, *before* enabling camera/mic; nonce checked against a replay cache | anyone who merely learned the room id waking the camera; a relay **replaying** a captured request |
 | **SDP MAC on the offer** `signSdp(…, CAMERA, sdp)` | camera | viewer | relay injecting its own session / rogue "camera" |
 | **SDP MAC on the answer** `signSdp(…, VIEWER, sdp)` | viewer | camera | relay answering in the viewer's place |
 
-The SDP contains the **DTLS fingerprint**, so a valid MAC over the SDP means the media key exchange is bound to the pairing secret. A relay that swaps the fingerprint to MITM the media produces an SDP whose MAC fails (tested: one-character change is rejected). MACs are role-bound (a camera signature cannot be reflected back as a viewer signature), room-bound, and time-windowed (5 min, ±1 window of clock skew).
+The SDP contains the **DTLS fingerprint**, so a valid MAC over the SDP means the media key exchange is bound to the pairing secret. A relay that swaps the fingerprint to MITM the media produces an SDP whose MAC fails (tested: a one-character change is rejected). MACs are role-bound (a camera signature cannot be reflected back as a viewer signature), room-bound, and time-windowed (5 min, ±1 window of clock skew).
 
-Residual: replaying a captured start-request inside its window can at most **wake an armed camera**; it cannot obtain video, because that requires a correctly signed answer. Documented, accepted.
+Replay: every start-request carries a fresh 128-bit nonce; the camera remembers nonces for 15 min (longer than the MAC can verify, bounded to 256 entries) and ignores repeats, so a relay cannot replay a captured request to switch the camera on. Even a successful wake could not obtain media (that needs a validly signed answer). Clock skew: MACs are accepted ±1 five-minute window, so phone clocks must be within ~5 min (both phones auto-set their time from the network).
+
+**Relay availability is not a confidentiality problem:** a hostile relay can drop messages or refuse service (the viewer then shows "can't connect"), but cannot view, wake or impersonate. Accepted: the relay is third-party free hosting.
 
 ## 3. Media encryption
 

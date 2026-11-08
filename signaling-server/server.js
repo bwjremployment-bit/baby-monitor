@@ -25,6 +25,7 @@ const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
 const ROLES = new Set(["camera", "viewer"]);
 const RELAY_TYPES = new Set(["offer", "answer", "ice", "start-request", "bye"]);
 const MAX_MESSAGE_BYTES = 64 * 1024; // SDP is small; cap to resist abuse.
+const HEARTBEAT_MS = 30_000;          // ping interval; a socket that misses one is dropped.
 
 /** room id -> { camera?: ws, viewer?: ws } */
 const rooms = new Map();
@@ -32,9 +33,22 @@ const rooms = new Map();
 export function createServer(opts = {}) {
   const wss = new WebSocketServer({ port: opts.port ?? PORT, maxPayload: MAX_MESSAGE_BYTES });
 
+  // Heartbeat: phone networks drop connections silently (no FIN). Without this a
+  // dead socket would hold its role in the room indefinitely.
+  const heartbeat = setInterval(() => {
+    for (const ws of wss.clients) {
+      if (ws.isAlive === false) { ws.terminate(); continue; }
+      ws.isAlive = false;
+      try { ws.ping(); } catch { /* ignore */ }
+    }
+  }, opts.heartbeatMs ?? HEARTBEAT_MS);
+  wss.on("close", () => clearInterval(heartbeat));
+
   wss.on("connection", (ws) => {
     ws.room = null;
     ws.role = null;
+    ws.isAlive = true;
+    ws.on("pong", () => { ws.isAlive = true; });
 
     ws.on("message", (data) => {
       let msg;
@@ -69,8 +83,15 @@ function handleJoin(ws, msg) {
   if (ws.room != null) return; // already joined
 
   const entry = rooms.get(room) ?? {};
-  if (entry[role]) {
-    return closeWith(ws, { type: "auth-error", reason: "role-taken" });
+  // A reconnecting peer must be able to replace its own stale socket (the old
+  // one may be half-dead and not yet reaped). Knowing the room id already
+  // implies knowing the pairing secret's derivative; and even a hostile
+  // takeover gains nothing, because peers authenticate each other end-to-end.
+  const stale = entry[role];
+  if (stale && stale !== ws) {
+    stale.room = null;   // so its close handler does not announce a departure
+    stale.role = null;
+    try { stale.terminate(); } catch { /* ignore */ }
   }
   entry[role] = ws;
   rooms.set(room, entry);

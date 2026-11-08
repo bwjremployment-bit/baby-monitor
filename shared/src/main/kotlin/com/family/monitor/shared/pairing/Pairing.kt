@@ -92,18 +92,20 @@ data class PairingPayload(
  * TRUST MODEL: the signalling relay is untrusted. It never holds the secret and
  * so can neither mint nor verify anything. Authentication is therefore
  * PEER-TO-PEER:
- *  - the viewer proves it is paired by attaching a [deriveToken] to its
- *    start-request, which the CAMERA verifies before ever turning on capture;
+ *  - the viewer proves it is paired by attaching a [signStart] MAC (over a
+ *    one-time nonce) to its start-request, which the CAMERA verifies, and
+ *    de-duplicates with a [ReplayGuard], before ever turning on capture;
  *  - the offer and answer each carry an [signSdp] MAC over the SDP, which the
  *    receiving peer verifies. Because the SDP contains the DTLS fingerprint,
  *    this stops a malicious relay from swapping fingerprints (a MITM on the
  *    media) as well as from injecting its own session.
- * Replaying a captured start-request within its window can at most wake an
- * armed camera; it cannot obtain media (that needs a validly signed answer).
+ * Because every start-request carries a one-time nonce that the camera
+ * remembers, a relay cannot replay a captured request to switch the camera on.
+ * Even a successful wake could not obtain media (that needs a validly signed
+ * answer).
  */
 object PairingCrypto {
     const val DEFAULT_WINDOW_MILLIS = 5 * 60 * 1000L
-    private const val TOKEN_CHARS = 32
 
     /** One-way, deterministic room id for a secret (128 bits, Base32). */
     fun deriveRoom(secret: String): String {
@@ -111,24 +113,36 @@ object PairingCrypto {
         return Base32.encode(digest.copyOf(16))
     }
 
-    fun deriveToken(
+    /** Fresh random nonce for one start-request (128 bits, base64url). */
+    fun newNonce(random: SecureRandom = SecureRandom()): String {
+        val b = ByteArray(16).also { random.nextBytes(it) }
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(b)
+    }
+
+    /** MAC the viewer attaches to a start-request: binds room + a one-time [nonce] + time window. */
+    fun signStart(
         secret: String,
         room: String,
-        role: Role,
+        nonce: String,
         epochMillis: Long,
         windowMillis: Long = DEFAULT_WINDOW_MILLIS,
-    ): String = hmacB64(secret, "token|$room|${role.name}|${epochMillis / windowMillis}").take(TOKEN_CHARS)
+    ): String = hmacB64(secret, "start|$room|${Role.VIEWER.name}|$nonce|${epochMillis / windowMillis}")
 
-    fun verifyToken(
-        token: String,
+    /**
+     * Verifies a start-request MAC. This only proves the sender holds the
+     * secret; the caller MUST also reject a nonce it has seen before
+     * (see [ReplayGuard]) so a captured request cannot be replayed.
+     */
+    fun verifyStart(
+        auth: String,
         secret: String,
         room: String,
-        role: Role,
+        nonce: String,
         epochMillis: Long,
         windowMillis: Long = DEFAULT_WINDOW_MILLIS,
         skewWindows: Int = 1,
-    ): Boolean = anyWindowMatches(token, epochMillis, windowMillis, skewWindows) { t ->
-        deriveToken(secret, room, role, t, windowMillis)
+    ): Boolean = anyWindowMatches(auth, epochMillis, windowMillis, skewWindows) { t ->
+        signStart(secret, room, nonce, t, windowMillis)
     }
 
     /** MAC over [sdp] by [role] (the sender); binds the SDP, incl. its DTLS fingerprint. */

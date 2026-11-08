@@ -31,7 +31,7 @@ sealed class SignalMessage {
     /**
      * Client -> server: request to enter [room] as [role]. No credential here:
      * the relay is untrusted and cannot verify one. Peers authenticate each
-     * other end-to-end (see PairingCrypto): [StartRequest.token] and the
+     * other end-to-end (see PairingCrypto): [StartRequest.auth] and the
      * [Offer.auth] / [Answer.auth] MACs.
      */
     @Serializable
@@ -69,12 +69,13 @@ sealed class SignalMessage {
 
     /**
      * Viewer -> camera: ask an armed camera to begin transmitting (Q3 remote
-     * start). [token] = PairingCrypto.deriveToken(.., Role.VIEWER, now); the
-     * camera verifies it BEFORE turning on camera/microphone.
+     * start). [nonce] is one-time; [auth] = PairingCrypto.signStart(secret,
+     * room, nonce, now). The camera verifies [auth] and rejects a repeated
+     * [nonce] BEFORE turning on camera/microphone.
      */
     @Serializable
     @SerialName("start-request")
-    data class StartRequest(val token: String) : SignalMessage()
+    data class StartRequest(val nonce: String, val auth: String) : SignalMessage()
 
     @Serializable
     @SerialName("bye")

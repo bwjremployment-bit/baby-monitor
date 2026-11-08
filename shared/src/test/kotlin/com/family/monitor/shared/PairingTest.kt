@@ -76,33 +76,43 @@ class PairingTest {
         assertFalse(a.toUri().contains(a.room))
     }
 
-    // ---- Tokens (viewer -> camera start-request) ----
-    @Test fun token_verifies_within_window() {
+    // ---- Start-request MAC (viewer -> camera) ----
+    @Test fun start_mac_verifies_within_window() {
         val p = PairingPayload.generate(rng)
-        val t = PairingCrypto.deriveToken(p.secret, p.room, Role.VIEWER, now)
-        assertTrue(PairingCrypto.verifyToken(t, p.secret, p.room, Role.VIEWER, now))
+        val n = PairingCrypto.newNonce(rng)
+        val a = PairingCrypto.signStart(p.secret, p.room, n, now)
+        assertTrue(PairingCrypto.verifyStart(a, p.secret, p.room, n, now))
     }
 
-    @Test fun token_tolerates_one_window_skew_but_not_ten() {
+    @Test fun start_mac_tolerates_one_window_skew_but_not_ten() {
         val p = PairingPayload.generate(rng)
-        val t = PairingCrypto.deriveToken(p.secret, p.room, Role.CAMERA, now)
-        assertTrue(PairingCrypto.verifyToken(t, p.secret, p.room, Role.CAMERA, now + window))
-        assertFalse(PairingCrypto.verifyToken(t, p.secret, p.room, Role.CAMERA, now + 10 * window))
+        val n = PairingCrypto.newNonce(rng)
+        val a = PairingCrypto.signStart(p.secret, p.room, n, now)
+        assertTrue(PairingCrypto.verifyStart(a, p.secret, p.room, n, now + window))
+        assertFalse(PairingCrypto.verifyStart(a, p.secret, p.room, n, now + 10 * window))
     }
 
-    @Test fun token_fails_with_wrong_secret_wrong_role_or_wrong_room() {
+    @Test fun start_mac_is_bound_to_secret_room_and_nonce() {
         val p = PairingPayload.generate(rng)
         val other = PairingPayload.generate(rng)
-        val t = PairingCrypto.deriveToken(p.secret, p.room, Role.VIEWER, now)
-        assertFalse(PairingCrypto.verifyToken(t, other.secret, p.room, Role.VIEWER, now))
-        assertFalse(PairingCrypto.verifyToken(t, p.secret, p.room, Role.CAMERA, now))
-        assertFalse(PairingCrypto.verifyToken(t, p.secret, other.room, Role.VIEWER, now))
+        val n = PairingCrypto.newNonce(rng)
+        val a = PairingCrypto.signStart(p.secret, p.room, n, now)
+        assertFalse(PairingCrypto.verifyStart(a, other.secret, p.room, n, now))
+        assertFalse(PairingCrypto.verifyStart(a, p.secret, other.room, n, now))
+        assertFalse(PairingCrypto.verifyStart(a, p.secret, p.room, PairingCrypto.newNonce(rng), now))
     }
 
-    @Test fun empty_or_garbage_token_is_rejected() {
+    @Test fun empty_or_garbage_start_mac_is_rejected() {
         val p = PairingPayload.generate(rng)
-        assertFalse(PairingCrypto.verifyToken("", p.secret, p.room, Role.VIEWER, now))
-        assertFalse(PairingCrypto.verifyToken("not-a-token", p.secret, p.room, Role.VIEWER, now))
+        val n = PairingCrypto.newNonce(rng)
+        assertFalse(PairingCrypto.verifyStart("", p.secret, p.room, n, now))
+        assertFalse(PairingCrypto.verifyStart("not-a-mac", p.secret, p.room, n, now))
+    }
+
+    @Test fun nonces_are_unique_and_unpadded() {
+        val a = PairingCrypto.newNonce(rng); val b = PairingCrypto.newNonce(rng)
+        assertNotEquals(a, b)
+        assertFalse(a.contains("="))
     }
 
     // ---- SDP signing (offer/answer; defeats a malicious relay swapping the DTLS fingerprint) ----

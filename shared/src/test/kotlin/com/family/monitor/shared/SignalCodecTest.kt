@@ -24,7 +24,7 @@ class SignalCodecTest {
     @Test fun answer_round_trips() = roundTrip(SignalMessage.Answer("v=0\r\no=- ...", "authB"))
     @Test fun ice_round_trips() =
         roundTrip(SignalMessage.Ice(IceCandidate("0", 0, "candidate:1 1 udp ...")))
-    @Test fun start_request_round_trips() = roundTrip(SignalMessage.StartRequest("tok"))
+    @Test fun start_request_round_trips() = roundTrip(SignalMessage.StartRequest("nonce1", "authX"))
     @Test fun bye_round_trips() = roundTrip(SignalMessage.Bye("done"))
 
     @Test fun decodes_camera_role_name() {

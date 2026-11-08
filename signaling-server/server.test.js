@@ -47,14 +47,23 @@ test("relay: camera + viewer pair, offer/answer/ice forwarded, role enforced", a
   await wait(50);
   assert.ok(camMsgs.some((m) => m.type === "ice" && m.candidate.candidate === "C"));
 
-  // a second camera in the same room is rejected
+  // a reconnecting camera REPLACES its stale socket (no lock-out after a silent drop)
+  let oldClosed = false;
+  cam.on("close", () => { oldClosed = true; });
   const dupMsgs = [];
   const dup = await open((m) => dupMsgs.push(m));
   dup.send(JSON.stringify({ type: "join", room: "room-abcdef12", role: "camera" }));
+  await wait(100);
+  assert.ok(dupMsgs.some((m) => m.type === "joined"), "replacement camera must be accepted");
+  assert.ok(oldClosed, "stale camera socket must be closed");
+  assert.ok(!viewMsgs.some((m) => m.type === "peer" && m.role === "camera" && m.present === false),
+    "viewer must not see a spurious camera departure during takeover");
+  // and the new camera is the one that now receives from the viewer
+  view.send(JSON.stringify({ type: "answer", sdp: "A2", auth: "x" }));
   await wait(50);
-  assert.ok(dupMsgs.some((m) => m.type === "auth-error" && m.reason === "role-taken"));
+  assert.ok(dupMsgs.some((m) => m.type === "answer" && m.sdp === "A2"));
 
-  cam.close(); view.close();
+  dup.close(); view.close();
 });
 
 test("isolation: messages never cross rooms; leave notifies peer", async (t) => {
@@ -88,4 +97,31 @@ test("isolation: messages never cross rooms; leave notifies peer", async (t) => 
   assert.ok(aMsgs.some((m) => m.type === "peer" && m.role === "viewer" && m.present === false));
 
   a.close(); b.close();
+});
+
+test("heartbeat: a socket that stops answering pings is terminated and its role freed", async (t) => {
+  const port = PORT + 2;
+  const wss = createServer({ port, heartbeatMs: 100 });
+  t.after(() => wss.close());
+  const url = `ws://127.0.0.1:${port}`;
+
+  // autoPong:false => this client never answers the server's pings (a dead network path).
+  const dead = new WebSocket(url, { autoPong: false });
+  await new Promise((res) => dead.on("open", res));
+  dead.send(JSON.stringify({ type: "join", room: "room-heartbt1", role: "camera" }));
+  let deadClosed = false;
+  dead.on("close", () => { deadClosed = true; });
+
+  await wait(500);   // > 2 heartbeat intervals
+  assert.ok(deadClosed, "server must terminate a socket that misses its heartbeat");
+
+  // The camera role is free again: a fresh camera joins and is the only member.
+  const msgs = [];
+  const fresh = new WebSocket(url);
+  fresh.on("message", (d) => msgs.push(JSON.parse(d.toString())));
+  await new Promise((res) => fresh.on("open", res));
+  fresh.send(JSON.stringify({ type: "join", room: "room-heartbt1", role: "camera" }));
+  await wait(80);
+  assert.deepEqual(msgs.at(-1), { type: "joined", peers: ["camera"] });
+  fresh.close();
 });
